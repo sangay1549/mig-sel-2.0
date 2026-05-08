@@ -20,7 +20,7 @@ The app runs at [http://localhost:5173](http://localhost:5173).
 
 ## Supabase keys
 
-Create a project at [supabase.com](https://supabase.com) and copy the URL + anon key into `my-app/.env`:
+Create a project at [supabase.com](https://supabase.com) and copy the URL + anon key into `.env`:
 
 ```
 VITE_SUPABASE_URL=https://your-project.supabase.co
