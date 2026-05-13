@@ -22,6 +22,7 @@
     ]
   },
   "dependencies": {
+    "@fontsource-variable/manrope": "^5.2.8",
     "@fontsource-variable/noto-sans": "^5.2.10",
     "@fontsource-variable/playfair-display": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
