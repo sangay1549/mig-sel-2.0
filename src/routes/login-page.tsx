@@ -62,10 +62,10 @@ export const LoginPage = () => {
             <LeafIcon />
           </div>
           <h1 className="text-foreground text-2xl font-semibold tracking-tight">
-            my-app
+            mig-sel
           </h1>
           <p className="text-muted-foreground/60 mt-1.5 text-xs tracking-wide uppercase">
-            Grounded in nature
+            GMC Resonance
           </p>
         </div>
 
