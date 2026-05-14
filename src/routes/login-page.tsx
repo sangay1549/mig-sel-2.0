@@ -3,11 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-<<<<<<< HEAD
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-=======
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
->>>>>>> 342c3319d0358be55605e268909edf52907a854b
 import {
   Form,
   FormControl,
@@ -20,7 +16,6 @@ import { useSignInWithPassword } from '@/features/auth/api/use-sign-in-with-pass
 import { useSignInWithGoogle } from '@/features/auth/api/use-sign-in-with-google';
 import { signInSchema, type SignInValues } from '@/features/auth/schemas/sign-in-schema';
 
-<<<<<<< HEAD
 const LeafIcon = () => (
   <svg
     width="28"
@@ -38,8 +33,6 @@ const LeafIcon = () => (
   </svg>
 );
 
-=======
->>>>>>> 342c3319d0358be55605e268909edf52907a854b
 export const LoginPage = () => {
   const navigate = useNavigate();
   const signIn = useSignInWithPassword();
@@ -57,11 +50,10 @@ export const LoginPage = () => {
   };
 
   return (
-<<<<<<< HEAD
-    <div className="relative flex min-h-svh items-center justify-center bg-background p-6">
+    <div className="bg-background relative flex min-h-svh items-center justify-center p-6">
       <div className="absolute inset-0 overflow-hidden">
-        <div className="bg-primary/5 absolute -left-48 -top-48 size-[36rem] rounded-full blur-3xl" />
-        <div className="bg-secondary/20 absolute -bottom-48 -right-48 size-[36rem] rounded-full blur-3xl" />
+        <div className="bg-primary/5 absolute -top-48 -left-48 size-[36rem] rounded-full blur-3xl" />
+        <div className="bg-secondary/20 absolute -right-48 -bottom-48 size-[36rem] rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-sm">
@@ -69,9 +61,7 @@ export const LoginPage = () => {
           <div className="mb-4 inline-flex items-center justify-center">
             <LeafIcon />
           </div>
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
-            mig-sel
-          </h1>
+          <h1 className="text-foreground text-2xl font-semibold tracking-tight">mig-sel</h1>
           <p className="text-muted-foreground/60 mt-1.5 text-xs tracking-wide uppercase">
             GMC Resonance
           </p>
@@ -123,12 +113,16 @@ export const LoginPage = () => {
                 />
 
                 {signIn.isError ? (
-                  <div className="rounded-sm bg-destructive/10 px-3 py-2">
+                  <div className="bg-destructive/10 rounded-sm px-3 py-2">
                     <p className="text-destructive text-sm">{signIn.error.message}</p>
                   </div>
                 ) : null}
 
-                <Button type="submit" className="w-full hover:scale-105 hover:shadow-lg" disabled={signIn.isPending}>
+                <Button
+                  type="submit"
+                  className="w-full hover:scale-105 hover:shadow-lg"
+                  disabled={signIn.isPending}
+                >
                   {signIn.isPending ? 'Signing in\u2026' : 'Sign in'}
                 </Button>
               </form>
@@ -138,7 +132,7 @@ export const LoginPage = () => {
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase tracking-wide">
+              <div className="relative flex justify-center text-xs tracking-wide uppercase">
                 <span className="bg-card text-muted-foreground px-3">or continue with</span>
               </div>
             </div>
@@ -186,7 +180,7 @@ export const LoginPage = () => {
               No account yet?{' '}
               <Link
                 to="/sign-up"
-                className="font-semibold text-primary underline underline-offset-4 hover:text-primary/80"
+                className="text-primary hover:text-primary/80 font-semibold underline underline-offset-4"
               >
                 Create one
               </Link>
@@ -200,80 +194,6 @@ export const LoginPage = () => {
           </CardContent>
         </Card>
       </div>
-=======
-    <div className="mx-auto max-w-md px-6 py-16">
-      <Card>
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" autoComplete="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" autoComplete="current-password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={signIn.isPending}>
-                {signIn.isPending ? 'Signing in…' : 'Sign in'}
-              </Button>
-              {signIn.isError ? (
-                <p className="text-destructive text-sm">{signIn.error.message}</p>
-              ) : null}
-            </form>
-          </Form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card text-muted-foreground px-2">or</span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            disabled={signInWithGoogle.isPending}
-            onClick={() => signInWithGoogle.mutate()}
-          >
-            {signInWithGoogle.isPending ? 'Redirecting…' : 'Continue with Google'}
-          </Button>
-          {signInWithGoogle.isError ? (
-            <p className="text-destructive text-sm">{signInWithGoogle.error.message}</p>
-          ) : null}
-
-          <p className="text-muted-foreground text-center text-sm">
-            <Link to="/" className="underline">
-              Back to home
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
->>>>>>> 342c3319d0358be55605e268909edf52907a854b
     </div>
   );
 };
