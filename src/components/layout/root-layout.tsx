@@ -1,10 +1,13 @@
 import { Outlet } from 'react-router';
+import { Navbar } from './navbar';
 
 export const RootLayout = () => {
   return (
     <div className="min-h-screen">
-      {/* Trainees: add navbar/sidebar here */}
-      <Outlet />
+      <Navbar />
+      <main>
+        <Outlet />
+      </main>
     </div>
   );
 };
