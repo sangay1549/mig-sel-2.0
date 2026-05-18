@@ -1,20 +1,46 @@
-import { Navigate } from 'react-router';
-import { useUserRole } from '@/features/auth/api/use-user-role';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { supabase } from '@/lib/supabase';
 
 export const AuthCallbackPage = () => {
-  const { isAdmin, isLoading } = useUserRole();
+  const navigate = useNavigate();
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-on-surface-variant text-sm font-medium">Redirecting...</div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-  if (isAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
+      if (sessionError || !session) {
+        navigate('/login');
+        return;
+      }
 
-  return <Navigate to="/map" replace />;
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        navigate('/');
+        return;
+      }
+
+      if (profile.role === 'admin') {
+        navigate('/dashboard');
+      } else {
+        navigate('/map');
+      }
+    };
+
+    handleAuthCallback();
+  }, [navigate]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-blue-950 text-white">
+      <p className="animate-pulse text-sm tracking-wide">Verifying credentials...</p>
+    </div>
+  );
 };
