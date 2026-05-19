@@ -3,41 +3,78 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState } from 'react';
 
-// Strict Sarpang Boundary Constraint
-const SARPANG_BOUNDS = L.latLngBounds(
-  [26.7032, 89.9213], // South-West Point
-  [27.2401, 90.7235], // North-East Point
-);
+const SARPANG_BOUNDS = L.latLngBounds([26.7032, 89.9213], [27.2401, 90.7235]);
 
-// Custom Marker styling factory using our design tokens
-const createCustomIcon = (status: string) => {
-  let markerColor = '#154212'; // Default primary forest green
+function categoryIcon(category: string, status: string): L.DivIcon {
+  const colors: Record<string, string> = {
+    road: '#d97706',
+    garbage: '#2563eb',
+    lighting: '#ca8a04',
+    drainage: '#0891b2',
+    default: '#154212',
+  };
 
-  if (status === 'pending') markerColor = '#ba1a1a'; // Error / Critical Red
-  if (status === 'in-progress') markerColor = '#2d5a27'; // Primary Container Green
-  if (status === 'resolved') markerColor = '#55624f'; // Secondary Sage
+  const color = colors[category] ?? colors.default;
+
+  const icons: Record<string, string> = {
+    road: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M2 12h3.5l1.5-4 4 8 3-6 2 4H22"/><path d="M2 20V4"/></svg>`,
+    garbage: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>`,
+    lighting: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>`,
+    drainage: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M14 2v8a2 2 0 0 0 2 2h4"/><path d="M2 18h4a2 2 0 0 1 2 2v2"/><path d="M4 22h16a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H8a2 2 0 0 1-2-2V4"/></svg>`,
+  };
+
+  const svg = icons[category] ?? icons.road;
+
+  const isResolved = status === 'resolved';
 
   return L.divIcon({
     html: `<div style="
-            background-color: ${markerColor}; 
-            width: 24px; 
-            height: 24px; 
-            border-radius: 50%; 
-            border: 3px solid #ffffff; 
-            box-shadow: 0px 2px 10px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          ">
-            <div style="width: 6px; height: 6px; background-color: #ffffff; border-radius: 50%;"></div>
-          </div>`,
-    className: 'custom-gps-marker',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+      position: relative;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="
+        position: absolute;
+        width: 36px;
+        height: 36px;
+        background: ${color};
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.25), 0 0 0 2px ${color}44;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+        ${isResolved ? 'opacity: 0.7; filter: saturate(0.5);' : ''}
+      ">
+        ${svg}
+      </div>
+      ${
+        !isResolved
+          ? `<div style="
+        position: absolute;
+        bottom: -2px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 8px;
+        height: 8px;
+        background: ${color};
+        border-radius: 50%;
+        border: 2px solid white;
+      "></div>`
+          : ''
+      }
+    </div>`,
+    className: '',
+    iconSize: [40, 48],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -42],
   });
-};
+}
 
-// Mock data reflecting BA spec problem categories
 const MOCK_GRIEVANCES = [
   {
     id: '1',
@@ -68,6 +105,14 @@ const MOCK_GRIEVANCES = [
   },
 ];
 
+const categoryConfig = [
+  { key: 'all', label: 'Alle', color: '#154212' },
+  { key: 'road', label: 'Straße', color: '#d97706' },
+  { key: 'garbage', label: 'Abfall', color: '#2563eb' },
+  { key: 'lighting', label: 'Beleuchtung', color: '#ca8a04' },
+  { key: 'drainage', label: 'Entwässerung', color: '#0891b2' },
+];
+
 export const GrievanceMap = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
@@ -78,24 +123,29 @@ export const GrievanceMap = () => {
 
   return (
     <div className="w-full space-y-4">
-      {/* Category filter bar similar to the Bonn platform layout */}
       <div className="flex flex-wrap gap-2 pb-2">
-        {['all', 'road', 'garbage', 'lighting', 'drainage'].map((cat) => (
+        {categoryConfig.map(({ key, label, color }) => (
           <button
-            key={cat}
-            onClick={() => setActiveFilter(cat)}
-            className={`text-label-sm rounded-full border px-3 py-1 font-bold tracking-wider uppercase transition-all ${
-              activeFilter === cat
-                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant hover:bg-surface-container-low'
+            key={key}
+            onClick={() => setActiveFilter(key)}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 ${
+              activeFilter === key
+                ? 'text-white shadow-sm'
+                : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'
             }`}
+            style={
+              activeFilter === key ? { backgroundColor: color, borderColor: color } : undefined
+            }
           >
-            {cat}
+            {key !== 'all' && (
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+            )}
+            {label}
           </button>
         ))}
       </div>
 
-      <div className="border-border group relative h-[550px] w-full overflow-hidden rounded-xl border shadow-sm">
+      <div className="group relative h-[550px] w-full overflow-hidden rounded-2xl border border-gray-200 shadow-lg">
         <MapContainer
           center={[26.9312, 90.4795]}
           zoom={13}
@@ -104,47 +154,49 @@ export const GrievanceMap = () => {
           maxBounds={SARPANG_BOUNDS}
           maxBoundsViscosity={1.0}
           className="z-0 h-full w-full"
+          zoomControl={false}
         >
-          {/* Muted Voyager map tiles perfectly matching our dark charcoal & earth elements */}
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://gmc.gov.bt">GMC Resilience System</a>'
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap'
           />
 
           {filteredGrievances.map((grievance) => (
             <Marker
               key={grievance.id}
               position={[grievance.lat, grievance.lng]}
-              icon={createCustomIcon(grievance.status)}
+              icon={categoryIcon(grievance.category, grievance.status)}
             >
-              <Popup className="custom-leaflet-popup">
-                <div className="min-w-[200px] space-y-2 p-2 font-sans">
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className="text-label-lg text-on-surface leading-tight font-bold">
+              <Popup>
+                <div className="font-sans">
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="text-sm leading-tight font-semibold text-gray-900">
                       {grievance.title}
                     </h4>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
                         grievance.status === 'pending'
-                          ? 'bg-error-container text-on-error-container'
+                          ? 'bg-red-100 text-red-700'
                           : grievance.status === 'in-progress'
-                            ? 'bg-primary-container text-on-primary-container'
-                            : 'bg-secondary-container text-on-secondary-container'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-green-100 text-green-700'
                       }`}
                     >
-                      {grievance.status}
+                      {grievance.status === 'in-progress'
+                        ? 'In Bearbeitung'
+                        : grievance.status === 'pending'
+                          ? 'Ausstehend'
+                          : 'Erledigt'}
                     </span>
                   </div>
-                  <p className="text-body-sm text-on-surface-variant leading-relaxed">
-                    {grievance.desc}
-                  </p>
-                  <div className="border-outline-variant text-muted-foreground flex items-center justify-between border-t pt-1 text-[11px] font-medium">
+                  <p className="mt-2 text-xs leading-relaxed text-gray-600">{grievance.desc}</p>
+                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2 text-[11px] font-medium text-gray-500">
                     <span>
-                      Type:{' '}
-                      <strong className="text-on-surface uppercase">{grievance.category}</strong>
+                      Kategorie:{' '}
+                      <strong className="text-gray-800 uppercase">{grievance.category}</strong>
                     </span>
-                    <button className="text-primary font-bold hover:underline">
-                      View Progress
+                    <button className="font-semibold text-gray-900 underline-offset-2 hover:underline">
+                      Details →
                     </button>
                   </div>
                 </div>
@@ -153,12 +205,50 @@ export const GrievanceMap = () => {
           ))}
         </MapContainer>
 
-        {/* Live Status indicator overlay */}
-        <div className="bg-surface/95 border-outline-variant absolute bottom-4 left-4 z-[1000] flex items-center gap-2 rounded-full border px-3 py-1.5 shadow-sm backdrop-blur-sm">
-          <span className="bg-primary h-2 w-2 animate-pulse rounded-full" />
-          <span className="text-label-xs text-on-surface font-bold tracking-wider uppercase">
-            Active Gelephu Jurisdiction Geo-Fence
+        <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-black/[0.03]" />
+
+        <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
+          Live
+        </div>
+
+        <div className="absolute right-4 bottom-4 z-[1000] flex items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            className="h-3 w-3"
+          >
+            <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          Gelephu, Sarpang
+        </div>
+
+        <div className="absolute bottom-4 left-4 z-[1000] flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#d97706]" />
+            <span>Straße</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb]" />
+            <span>Abfall</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#ca8a04]" />
+            <span>Beleuchtung</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#0891b2]" />
+            <span>Entwässerung</span>
+          </div>
         </div>
       </div>
     </div>
