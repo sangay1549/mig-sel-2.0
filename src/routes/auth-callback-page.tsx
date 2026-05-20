@@ -1,41 +1,61 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '@/lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 
 export const AuthCallbackPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+    let cancelled = false;
 
-      if (sessionError || !session) {
-        navigate('/login');
-        return;
-      }
-
-      const { data: profile, error: profileError } = await supabase
+    const redirectByRole = async (session: Session) => {
+      const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
         .single();
 
-      if (profileError || !profile) {
-        navigate('/');
-        return;
-      }
+      const metadataRole =
+        (session.user?.app_metadata?.role as string | undefined) ??
+        (session.user?.user_metadata?.role as string | undefined);
+      const role = profile?.role ?? metadataRole;
 
-      if (profile.role === 'admin') {
-        navigate('/dashboard');
-      } else {
-        navigate('/map');
+      if (!cancelled) {
+        navigate(role === 'admin' ? '/dashboard' : '/map');
       }
     };
 
+    const handleAuthCallback = async () => {
+      const auth = await supabase.auth.getSession();
+      const session = auth.data.session;
+      const sessionError = auth.error;
+
+      if (sessionError) {
+        navigate('/login');
+        return;
+      }
+
+      if (session) {
+        redirectByRole(session);
+        return;
+      }
+
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        if (newSession) {
+          subscription.unsubscribe();
+          redirectByRole(newSession);
+        }
+      });
+    };
+
     handleAuthCallback();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   return (

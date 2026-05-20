@@ -6,14 +6,16 @@ export type ComplaintStatus = 'pending' | 'in-progress' | 'resolved';
 
 export type Complaint = {
   id: string;
+  created_at: string;
   title: string;
-  category: ComplaintCategory;
-  urgency: ComplaintUrgency;
-  status: ComplaintStatus;
   description: string;
-  reporter: string;
-  reportedAt: string;
-  resolvedAt: string | null;
-  lat: number;
-  lng: number;
+  category: ComplaintCategory;
+  status: ComplaintStatus;
+  image_url: string | null;
+  latitude: number;
+  longitude: number;
+  reporter_id: string;
+  location: string | null;
+  resolved_image_url: string | null;
+  urgency: ComplaintUrgency;
 };

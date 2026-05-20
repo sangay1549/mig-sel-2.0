@@ -5,6 +5,7 @@ import { LoginPage } from './login-page';
 import { NotFoundPage } from './not-found-page';
 import { AuthCallbackPage } from './auth-callback-page';
 import { MapPage } from './map-page';
+import { ComplaintDetailPage } from './complaint-detail-page';
 import { ProtectedRoute } from '@/components/layout/protected-route';
 import { AdminRoute } from '@/components/layout/admin-route';
 
@@ -32,7 +33,10 @@ export const router = createBrowserRouter([
     children: [
       {
         element: <AdminRoute />,
-        children: [{ index: true, element: <AdminPage /> }],
+        children: [
+          { index: true, element: <AdminPage /> },
+          { path: 'complaint/:id', element: <ComplaintDetailPage /> },
+        ],
       },
     ],
   },

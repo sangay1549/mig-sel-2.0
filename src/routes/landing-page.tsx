@@ -1,6 +1,9 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useSignInWithGoogle } from '@/features/auth/api/use-sign-in-with-google';
+import { useSession } from '@/features/auth/api/use-session';
 
 const LeafIcon = () => (
   <svg
@@ -20,7 +23,15 @@ const LeafIcon = () => (
 );
 
 export const LandingPage = () => {
+  const navigate = useNavigate();
+  const { data: session, isLoading } = useSession();
   const signInWithGoogle = useSignInWithGoogle();
+
+  useEffect(() => {
+    if (!isLoading && session) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [session, isLoading, navigate]);
 
   return (
     <div
