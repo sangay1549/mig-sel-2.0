@@ -3,6 +3,7 @@ import { GrievanceMap } from '@/features/auth/grievance/components/grievance-map
 import { GrievanceDrawer } from '@/features/auth/grievance/components/grievance-drawer.tsx';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, LogOut, Leaf } from 'lucide-react';
 
 export const MapPage = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export const MapPage = () => {
             onClick={() => navigate('/')}
             className="text-body-sm text-muted-foreground hover:text-primary text-xs font-medium md:text-sm"
           >
+            <LogOut className="h-3.5 w-3.5" />
             Exit
           </Button>
         </div>

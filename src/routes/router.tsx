@@ -1,6 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { LandingPage } from './landing-page';
-import { HomePage } from './home-page';
+import { AdminPage } from './admin-page';
 import { LoginPage } from './login-page';
 import { NotFoundPage } from './not-found-page';
 import { AuthCallbackPage } from './auth-callback-page';
@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
     children: [
       {
         element: <AdminRoute />,
-        children: [{ index: true, element: <HomePage /> }],
+        children: [{ index: true, element: <AdminPage /> }],
       },
     ],
   },

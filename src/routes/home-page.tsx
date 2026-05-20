@@ -3,8 +3,18 @@ import { GrievanceMap } from '@/features/auth/grievance/components/grievance-map
 import { GrievanceDrawer } from '@/features/auth/grievance/components/grievance-drawer';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useSignOut } from '@/features/auth/api/use-sign-out';
+import { WasteRecord } from '@/features/waste/components/waste-record';
+import { ComplaintMonitor } from '@/features/complaint/components/complaint-monitor';
 
-export const HomePage = () => {
+type TabId = 'waste' | 'complaint';
+
+const TABS: { id: TabId; label: string; icon: React.ReactNode; desc: string }[] = [
+  { id: 'waste', label: 'Waste Management Record', icon: <Trash2 className="h-4 w-4" />, desc: 'Track and manage waste collection data' },
+  { id: 'complaint', label: 'Complaint Monitoring', icon: <AlertTriangle className="h-4 w-4" />, desc: 'Monitor public complaints and resolutions' },
+];
+
+export const AdminPage = () => {
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -52,6 +62,35 @@ export const HomePage = () => {
             </Button>
           </div>
         </div>
+
+        {/* Tab Content — sliding panel */}
+        <div className="relative mx-auto overflow-hidden rounded-xl border shadow-sm" style={{ backgroundColor: '#ffffff', borderColor: '#e5e2e1', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+          <div
+            className={`flex transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+              animating ? (isSlidingRight ? 'translate-x-[-100%]' : 'translate-x-[100%]') : ''
+            }`}
+            style={{
+              transform: !animating
+                ? activeTab === 'waste'
+                  ? 'translateX(0%)'
+                  : 'translateX(-100%)'
+                : undefined,
+            }}
+            onTransitionEnd={() => setAnimating(false)}
+          >
+            <div className="w-full shrink-0 p-6">
+              <WasteRecord />
+            </div>
+            <div className="w-full shrink-0 p-6">
+              <ComplaintMonitor />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="mt-8 text-center text-xs" style={{ color: '#c2c9bb' }}>
+          GMC Resonance &middot; Administrative Panel
+        </p>
       </main>
 
       {isDrawerOpen && <GrievanceDrawer onClose={() => setIsDrawerOpen(false)} />}
