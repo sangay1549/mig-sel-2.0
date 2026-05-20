@@ -236,7 +236,6 @@ function ZoomControls() {
 
   return (
     <div
-      className="absolute right-0 bottom-0 flex flex-col gap-0.5"
       className="leaflet-bottom leaflet-right flex flex-col gap-0.5"
       style={{ zIndex: 1000, marginBottom: 140, marginRight: 10 }}
     >
@@ -367,7 +366,6 @@ function LocateButton() {
 
   return (
     <div
-      className="absolute right-0 bottom-0"
       className="leaflet-bottom leaflet-right"
       style={{ zIndex: 1000, marginBottom: 80, marginRight: 10 }}
     >
@@ -873,10 +871,6 @@ export const GrievanceMap = () => {
               );
             });
           })()}
-          <UserLocationDot />
-
-          <LocateButton />
-
           {filteredGrievances.map((grievance) => (
             <Marker
               key={grievance.id}
