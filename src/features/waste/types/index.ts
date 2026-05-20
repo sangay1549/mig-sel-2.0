@@ -21,5 +21,5 @@ export type WasteRecord = {
   unit: string;
   reportedAt: string;
   collectedAt: string | null;
-  notes: string;
+  notes: string | null;
 };
