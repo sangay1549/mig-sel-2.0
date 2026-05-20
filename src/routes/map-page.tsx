@@ -3,7 +3,6 @@ import { GrievanceMap } from '@/features/auth/grievance/components/grievance-map
 import { GrievanceDrawer } from '@/features/auth/grievance/components/grievance-drawer.tsx';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
 import { LogOut, LayoutDashboard } from 'lucide-react';
 import { useIsAdmin } from '@/features/auth/api/use-is-admin';
 
@@ -31,14 +30,6 @@ export const MapPage = () => {
             className="bg-primary text-primary-foreground h-9 text-xs font-medium md:h-auto md:text-sm"
           >
             + Report
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="text-body-sm text-muted-foreground hover:text-primary text-xs font-medium md:text-sm"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Exit
           </Button>
           {isAdmin ? (
             <Button
