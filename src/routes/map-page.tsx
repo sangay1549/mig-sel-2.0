@@ -4,10 +4,13 @@ import { GrievanceDrawer } from '@/features/auth/grievance/components/grievance-
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
+import { LogOut, LayoutDashboard } from 'lucide-react';
+import { useIsAdmin } from '@/features/auth/api/use-is-admin';
 
 export const MapPage = () => {
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { data: isAdmin } = useIsAdmin();
 
   return (
     <div className="bg-background min-h-screen font-sans">
@@ -37,6 +40,25 @@ export const MapPage = () => {
             <LogOut className="h-3.5 w-3.5" />
             Exit
           </Button>
+          {isAdmin ? (
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/dashboard')}
+              className="text-body-sm text-muted-foreground hover:text-primary text-xs font-medium md:text-sm"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Admin Dashboard
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/')}
+              className="text-body-sm text-muted-foreground hover:text-primary text-xs font-medium md:text-sm"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Exit
+            </Button>
+          )}
         </div>
       </nav>
 

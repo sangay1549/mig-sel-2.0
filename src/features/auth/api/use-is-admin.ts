@@ -1,12 +1,11 @@
-import { Navigate, Outlet } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { useSession } from '@/features/auth/api/use-session';
+import { useSession } from './use-session';
 
-export const AdminRoute = () => {
+export const useIsAdmin = () => {
   const { data: session } = useSession();
 
-  const { data: profile, isLoading } = useQuery({
+  return useQuery({
     queryKey: ['profile-role', session?.user?.id],
     queryFn: async () => {
       if (!session?.user?.id) return false;
@@ -22,10 +21,4 @@ export const AdminRoute = () => {
     },
     enabled: !!session?.user?.id,
   });
-
-  if (isLoading) return null;
-
-  if (!profile) return <Navigate to="/map" replace />;
-
-  return <Outlet />;
 };

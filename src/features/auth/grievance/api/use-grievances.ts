@@ -41,6 +41,7 @@ export const useGrievances = () => {
         if (!g.resolved_at) return true;
         return new Date(g.resolved_at) >= oneWeekAgo;
       });
+      return data;
     },
   });
 };

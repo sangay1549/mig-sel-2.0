@@ -1,4 +1,5 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -17,6 +18,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { DirectionsControl } from './directions-control';
+import { Search, Loader2, Navigation, Plus, Minus } from 'lucide-react';
 
 const SARPANG_BOUNDS = L.latLngBounds([26.7032, 89.9213], [27.2401, 90.7235]);
 
@@ -237,6 +239,7 @@ function ZoomControls() {
   return (
     <div
       className="absolute right-0 bottom-0 flex flex-col gap-0.5"
+      className="leaflet-bottom leaflet-right flex flex-col gap-0.5"
       style={{ zIndex: 1000, marginBottom: 140, marginRight: 10 }}
     >
       <button
@@ -265,6 +268,7 @@ function SearchBox() {
 }
 
 function UserLocationDot({ accuracy }: { accuracy: number | null }) {
+function UserLocationDot() {
   const { coords: detectedCoords } = useGeoLocation();
   const map = useMap();
 
@@ -308,6 +312,30 @@ function UserLocationDot({ accuracy }: { accuracy: number | null }) {
       layers.forEach((l) => map.removeLayer(l));
     };
   }, [detectedCoords, map, accuracy]);
+    if (detectedCoords) {
+      const el = L.circleMarker([detectedCoords.lat, detectedCoords.lng], {
+        radius: 10,
+        color: '#2563eb',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.4,
+        weight: 3,
+        opacity: 0.9,
+      }).addTo(map);
+
+      const pulse = L.circleMarker([detectedCoords.lat, detectedCoords.lng], {
+        radius: 6,
+        color: '#3b82f6',
+        fillColor: '#60a5fa',
+        fillOpacity: 0.8,
+        weight: 2,
+      }).addTo(map);
+
+      return () => {
+        map.removeLayer(el);
+        map.removeLayer(pulse);
+      };
+    }
+  }, [detectedCoords, map]);
 
   return null;
 }
@@ -367,6 +395,7 @@ function LocateButton() {
   return (
     <div
       className="absolute right-0 bottom-0"
+      className="leaflet-bottom leaflet-right"
       style={{ zIndex: 1000, marginBottom: 80, marginRight: 10 }}
     >
       {error && (
@@ -644,6 +673,9 @@ export const GrievanceMap = () => {
   } | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const { coords: detectedCoords, accuracy } = useGeoLocation();
+export const GrievanceMap = () => {
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const { coords: detectedCoords } = useGeoLocation();
   const { data: grievances, isLoading, isError, error } = useGrievances();
 
   const DEFAULT_CENTER = { lat: 26.9312, lng: 90.4795 };
@@ -694,6 +726,7 @@ export const GrievanceMap = () => {
         ref={mapContainerRef}
         className="group relative h-[calc(100dvh-13rem)] min-h-[400px] w-full overflow-hidden rounded-2xl border border-gray-200 shadow-lg md:h-[550px]"
       >
+      <div className="group relative h-[calc(100dvh-13rem)] min-h-[400px] w-full overflow-hidden rounded-2xl border border-gray-200 shadow-lg md:h-[550px]">
         {isLoading && (
           <div className="absolute inset-0 z-[1001] flex items-center justify-center bg-white/60">
             <p className="text-sm font-medium text-gray-500">Loading reports...</p>
@@ -871,6 +904,80 @@ export const GrievanceMap = () => {
               );
             });
           })()}
+          <UserLocationDot />
+
+          <LocateButton />
+
+          {filteredGrievances.map((grievance) => (
+            <Marker
+              key={grievance.id}
+              position={[grievance.lat, grievance.lng]}
+              icon={categoryIcon(grievance.category, grievance.mapStatus)}
+            >
+              <Popup>
+                <div className="max-w-[250px] font-sans">
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="text-sm leading-tight font-semibold text-gray-900">
+                      {grievance.title}
+                    </h4>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
+                        grievance.mapStatus === 'pending'
+                          ? 'bg-red-100 text-red-700'
+                          : grievance.mapStatus === 'in-progress'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-green-100 text-green-700'
+                      }`}
+                    >
+                      {grievance.mapStatus === 'in-progress'
+                        ? 'In Progress'
+                        : grievance.mapStatus === 'pending'
+                          ? 'Pending'
+                          : 'Resolved'}
+                    </span>
+                  </div>
+
+                  {grievance.image_url && (
+                    <img
+                      src={grievance.image_url}
+                      alt="Complaint"
+                      className="mt-2 h-32 w-full rounded-lg object-cover"
+                    />
+                  )}
+
+                  {grievance.resolved_image_url && grievance.mapStatus === 'resolved' && (
+                    <div className="mt-2">
+                      <p className="text-[10px] font-bold tracking-wider text-green-600 uppercase">
+                        Resolved — Before / After
+                      </p>
+                      <div className="mt-1 flex gap-1">
+                        <img
+                          src={grievance.image_url}
+                          alt="Before"
+                          className="h-20 w-1/2 rounded-lg object-cover ring-1 ring-gray-200"
+                        />
+                        <img
+                          src={grievance.resolved_image_url}
+                          alt="After"
+                          className="h-20 w-1/2 rounded-lg object-cover ring-1 ring-green-300"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="mt-2 text-xs leading-relaxed text-gray-600">{grievance.desc}</p>
+                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2 text-[11px] font-medium text-gray-500">
+                    <span>
+                      Category:{' '}
+                      <strong className="text-gray-800 uppercase">
+                        {categoryLabel(grievance.category)}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
 
         <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-black/[0.03]" />
@@ -885,6 +992,12 @@ export const GrievanceMap = () => {
             Live
           </div>
           <FullscreenButton containerRef={mapContainerRef} />
+        <div className="absolute top-4 right-4 z-[40] flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          Live
         </div>
 
         <div className="absolute right-4 bottom-4 z-[40] flex items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">

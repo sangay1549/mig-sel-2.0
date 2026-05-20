@@ -68,6 +68,7 @@ export const useGeoLocation = () => {
       const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
       setCachedPosition(coords.lat, coords.lng);
       setState({ coords, accuracy: position.coords.accuracy, error: null, loading: false });
+      setState({ coords, error: null, loading: false });
     };
 
     const error = (err: GeolocationPositionError) => {
@@ -82,6 +83,7 @@ export const useGeoLocation = () => {
         message = 'Location request timed out. Try again.';
       }
       setState({ coords: null, accuracy: null, error: message, loading: false });
+      setState({ coords: null, error: message, loading: false });
     };
 
     const watchId = navigator.geolocation.watchPosition(success, error, {
