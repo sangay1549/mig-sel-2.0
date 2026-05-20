@@ -46,7 +46,7 @@ export const LandingPage = () => {
 
         <Card className="border-white/20 bg-white/20 shadow-xl backdrop-blur-xl">
           <CardHeader className="mb-2">
-            <CardTitle className="text-white">Welcome back</CardTitle>
+            <CardTitle className="text-white">Welcome</CardTitle>
             <CardDescription className="text-white/70">
               Sign in with your Google account to continue.
             </CardDescription>

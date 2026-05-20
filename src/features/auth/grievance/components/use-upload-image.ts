@@ -1,0 +1,32 @@
+import { supabase } from '@/lib/supabase';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+export const uploadGrievanceImage = async (file: File) => {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error('File is too large. Maximum size is 10MB.');
+  }
+
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${crypto.randomUUID()}.${fileExt}`;
+  const filePath = `reports/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage.from('grievances').upload(filePath, file);
+
+  if (uploadError) {
+    if (uploadError.message?.includes('bucket')) {
+      throw new Error(
+        'Storage bucket "grievances" not found. Please create it in the Supabase dashboard.',
+      );
+    }
+    if (uploadError.message?.includes('policy') || uploadError.message?.includes('permission')) {
+      throw new Error(
+        'Upload permission denied. Check the storage RLS policies in the Supabase dashboard.',
+      );
+    }
+    throw uploadError;
+  }
+
+  const { data } = supabase.storage.from('grievances').getPublicUrl(filePath);
+  return data.publicUrl;
+};
