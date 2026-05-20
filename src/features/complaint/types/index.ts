@@ -18,4 +18,7 @@ export type Complaint = {
   location: string | null;
   resolved_image_url: string | null;
   urgency: ComplaintUrgency;
+  reporter: string;
+  reportedAt: string;
+  resolvedAt: string | null;
 };
