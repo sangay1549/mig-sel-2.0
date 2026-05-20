@@ -3,7 +3,7 @@ import { GrievanceMap } from '@/features/auth/grievance/components/grievance-map
 import { GrievanceDrawer } from '@/features/auth/grievance/components/grievance-drawer.tsx';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Leaf } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 export const MapPage = () => {
   const navigate = useNavigate();
