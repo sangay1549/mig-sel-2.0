@@ -236,14 +236,14 @@ function ZoomControls() {
 
   return (
     <div
-      className="leaflet-bottom leaflet-right flex flex-col gap-0.5"
-      style={{ zIndex: 1000, marginBottom: 140, marginRight: 10 }}
+      className="leaflet-bottom leaflet-right flex flex-col gap-px"
+      style={{ zIndex: 1000, marginBottom: 22, marginRight: 10 }}
     >
       <button
         onClick={() => map.zoomIn()}
         title="Zoom in"
         aria-label="Zoom in"
-        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-t-lg bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-t-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
       >
         <Plus className="h-5 w-5 text-gray-700" />
       </button>
@@ -251,7 +251,7 @@ function ZoomControls() {
         onClick={() => map.zoomOut()}
         title="Zoom out"
         aria-label="Zoom out"
-        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-b-lg bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-b-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
       >
         <Minus className="h-5 w-5 text-gray-700" />
       </button>
@@ -367,7 +367,7 @@ function LocateButton() {
   return (
     <div
       className="leaflet-bottom leaflet-right"
-      style={{ zIndex: 1000, marginBottom: 80, marginRight: 10 }}
+      style={{ zIndex: 1000, marginBottom: 100, marginRight: 10 }}
     >
       {error && (
         <div
@@ -710,11 +710,14 @@ export const GrievanceMap = () => {
           center={[26.9312, 90.4795]}
           zoom={13}
           minZoom={11}
-          maxZoom={17}
+          maxZoom={21}
           maxBounds={SARPANG_BOUNDS}
           maxBoundsViscosity={1.0}
           className="z-0 h-full w-full"
           zoomControl={false}
+          scrollWheelZoom={true}
+          doubleClickZoom={true}
+          touchZoom={true}
         >
           <ScaleControl />
 

@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { WasteRecord } from '@/features/waste/components/waste-record';
 import { ComplaintMonitor } from '@/features/complaint/components/complaint-monitor';
 
-export const AdminPage = () => {
+export const DashboardPage = () => {
   const navigate = useNavigate();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 

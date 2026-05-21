@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '@/lib/supabase';
+import { getUserRole } from '@/lib/role-query';
 import type { Session } from '@supabase/supabase-js';
 
 export const AuthCallbackPage = () => {
@@ -10,16 +11,7 @@ export const AuthCallbackPage = () => {
     let cancelled = false;
 
     const redirectByRole = async (session: Session) => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-
-      const metadataRole =
-        (session.user?.app_metadata?.role as string | undefined) ??
-        (session.user?.user_metadata?.role as string | undefined);
-      const role = profile?.role ?? metadataRole;
+      const role = await getUserRole(session);
 
       if (!cancelled) {
         navigate(role === 'admin' ? '/dashboard' : '/map');

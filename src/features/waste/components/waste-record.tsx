@@ -17,41 +17,8 @@ import { useWasteRecords } from '@/features/waste/api/use-waste-records';
 import { useCreateWasteRecord } from '@/features/waste/api/use-create-waste-record';
 import { useUpdateWasteRecord } from '@/features/waste/api/use-update-waste-record';
 import { useDeleteWasteRecord } from '@/features/waste/api/use-delete-waste-record';
+import { CATEGORIES, CATEGORY_LABELS } from '@/features/waste/constants';
 import type { WasteRecord as WasteRecordType, WasteCategory } from '@/features/waste/types';
-
-const CATEGORIES: { value: WasteCategory; label: string; color: string }[] = [
-  { value: 'organic-food', label: 'Organic/Food waste', color: '#16a34a' },
-  { value: 'paper-cardboard', label: 'Paper & Cardboard', color: '#2563eb' },
-  { value: 'plastic-soft-packaging', label: 'Plastic soft packaging', color: '#eab308' },
-  { value: 'plastic-pet-hdpe', label: 'Plastic (PET&HDPE)', color: '#f97316' },
-  { value: 'textile', label: 'Textile', color: '#ec4899' },
-  { value: 'glass', label: 'Glass', color: '#06b6d4' },
-  { value: 'metal-aluminum', label: 'Metal, Aluminum', color: '#8b5cf6' },
-  { value: 'e-waste', label: 'E-waste', color: '#ef4444' },
-  { value: 'infectious-waste', label: 'Infectious waste', color: '#dc2626' },
-  { value: 'leather-rubber', label: 'Leather, Rubber', color: '#78716c' },
-  { value: 'wood', label: 'Wood', color: '#d97706' },
-  { value: 'sanitary-waste', label: 'Sanitary waste', color: '#a1a1aa' },
-  { value: 'green-plant-materials', label: 'Green plant materials', color: '#22c55e' },
-  { value: 'construction-demolition', label: 'Construction & Demolition wastes', color: '#92400e' },
-];
-
-const CATEGORY_LABELS: Record<WasteCategory, string> = {
-  'organic-food': 'Organic/Food waste',
-  'paper-cardboard': 'Paper & Cardboard',
-  'plastic-soft-packaging': 'Plastic soft packaging',
-  'plastic-pet-hdpe': 'Plastic (PET&HDPE)',
-  textile: 'Textile',
-  glass: 'Glass',
-  'metal-aluminum': 'Metal, Aluminum',
-  'e-waste': 'E-waste',
-  'infectious-waste': 'Infectious waste',
-  'leather-rubber': 'Leather, Rubber',
-  wood: 'Wood',
-  'sanitary-waste': 'Sanitary waste',
-  'green-plant-materials': 'Green plant materials',
-  'construction-demolition': 'Construction & Demolition wastes',
-};
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
 

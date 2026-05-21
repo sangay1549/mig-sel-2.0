@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Clock, CheckCircle2, MoveRight, Upload, Loader2, X, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,71 +7,18 @@ import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
 import { useComplaint } from '@/features/complaint/api/use-complaint';
 import { useUpdateComplaint } from '@/features/complaint/api/use-update-complaint';
 import { uploadGrievanceImage } from '@/features/auth/grievance/components/use-upload-image';
-import type {
-  ComplaintCategory,
-  ComplaintUrgency,
-  ComplaintStatus,
-} from '@/features/complaint/types';
-
-const URGENCY_BADGE: Record<ComplaintUrgency, { bg: string; text: string; hoverBg: string }> = {
-  critical: { bg: '#fef2f2', text: '#dc2626', hoverBg: '#fee2e2' },
-  high: { bg: '#fff7ed', text: '#ea580c', hoverBg: '#ffedd5' },
-  medium: { bg: '#eff6ff', text: '#2563eb', hoverBg: '#dbeafe' },
-  low: { bg: '#f0fdf4', text: '#16a34a', hoverBg: '#dcfce7' },
-};
-
-const STATUS_BADGE: Record<ComplaintStatus, { bg: string; text: string }> = {
-  pending: { bg: '#fff7ed', text: '#ea580c' },
-  'in-progress': { bg: '#eff6ff', text: '#2563eb' },
-  resolved: { bg: '#f0fdf4', text: '#16a34a' },
-};
-
-const STATUS_LABELS: Record<ComplaintStatus, string> = {
-  pending: 'Pending',
-  'in-progress': 'In Progress',
-  resolved: 'Resolved',
-};
-
-const URGENCY_LABELS: Record<ComplaintUrgency, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
-
-const CATEGORY_LABELS: Record<ComplaintCategory, string> = {
-  road: 'Road',
-  garbage: 'Garbage',
-  lighting: 'Lighting',
-  drainage: 'Drainage',
-  other: 'Other',
-};
-
-const STATUS_URGENCY_ORDER: ComplaintUrgency[] = ['low', 'medium', 'high', 'critical'];
-const STATUS_ORDER: ComplaintStatus[] = ['pending', 'in-progress', 'resolved'];
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="text-muted-foreground/60 text-xs font-bold tracking-wide uppercase">
-        {label}
-      </label>
-      <div className="text-foreground mt-1 text-sm">{children}</div>
-    </div>
-  );
-}
-
-function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void) {
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        handler();
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [ref, handler]);
-}
+import {
+  URGENCY_BADGE_WITH_HOVER as URGENCY_BADGE,
+  STATUS_BADGE,
+  STATUS_LABELS,
+  URGENCY_LABELS,
+  CATEGORY_LABELS,
+  STATUS_URGENCY_ORDER,
+  STATUS_ORDER,
+} from '@/features/complaint/constants';
+import { Field } from '@/components/ui/field';
+import { useClickOutside } from '@/hooks/use-click-outside';
+import type { ComplaintStatus, ComplaintUrgency } from '@/features/complaint/types';
 
 export const ComplaintDetailPage = () => {
   const navigate = useNavigate();

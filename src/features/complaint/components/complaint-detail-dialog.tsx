@@ -9,55 +9,15 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import type {
-  Complaint,
-  ComplaintCategory,
-  ComplaintUrgency,
-  ComplaintStatus,
-} from '@/features/complaint/types';
-
-const URGENCY_BADGE: Record<ComplaintUrgency, { bg: string; text: string }> = {
-  critical: { bg: '#fef2f2', text: '#dc2626' },
-  high: { bg: '#fff7ed', text: '#ea580c' },
-  medium: { bg: '#eff6ff', text: '#2563eb' },
-  low: { bg: '#f0fdf4', text: '#16a34a' },
-};
-
-const STATUS_BADGE: Record<ComplaintStatus, { bg: string; text: string }> = {
-  pending: { bg: '#fff7ed', text: '#ea580c' },
-  'in-progress': { bg: '#eff6ff', text: '#2563eb' },
-  resolved: { bg: '#f0fdf4', text: '#16a34a' },
-};
-
-const CATEGORY_LABELS: Record<ComplaintCategory, string> = {
-  road: 'Road',
-  garbage: 'Garbage',
-  lighting: 'Lighting',
-  drainage: 'Drainage',
-  other: 'Other',
-};
-
-const STATUS_LABELS: Record<ComplaintStatus, string> = {
-  pending: 'Pending',
-  'in-progress': 'In Progress',
-  resolved: 'Resolved',
-};
-
-const URGENCY_LABELS: Record<ComplaintUrgency, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-muted-foreground/60 text-xs font-bold tracking-wide uppercase">{label}</p>
-      <div className="text-foreground mt-0.5 text-sm">{children}</div>
-    </div>
-  );
-}
+import {
+  URGENCY_BADGE,
+  STATUS_BADGE,
+  CATEGORY_LABELS,
+  STATUS_LABELS,
+  URGENCY_LABELS,
+} from '@/features/complaint/constants';
+import { Field } from '@/components/ui/field';
+import type { Complaint } from '@/features/complaint/types';
 
 export function ComplaintDetailDialog({
   complaint,

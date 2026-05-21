@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   AlertTriangle,
   ChevronLeft,
@@ -12,7 +12,16 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/lib/supabase.ts'; // Adjust path based on your project configuration
+import { supabase } from '@/lib/supabase';
+import {
+  URGENCY_ORDER,
+  URGENCY_BADGE,
+  STATUS_BADGE,
+  CATEGORY_LABELS,
+  CATEGORY_COLORS,
+  STATUS_LABELS,
+  URGENCY_LABELS,
+} from '@/features/complaint/constants';
 import type {
   Complaint,
   ComplaintCategory,
@@ -20,58 +29,8 @@ import type {
   ComplaintStatus,
 } from '@/features/complaint/types';
 
-const URGENCY_ORDER: Record<ComplaintUrgency, number> = {
-  critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-};
-
-const URGENCY_BADGE: Record<ComplaintUrgency, { bg: string; text: string }> = {
-  critical: { bg: '#fef2f2', text: '#dc2626' },
-  high: { bg: '#fff7ed', text: '#ea580c' },
-  medium: { bg: '#eff6ff', text: '#2563eb' },
-  low: { bg: '#f0fdf4', text: '#16a34a' },
-};
-
-const STATUS_BADGE: Record<ComplaintStatus, { bg: string; text: string }> = {
-  pending: { bg: '#fff7ed', text: '#ea580c' },
-  'in-progress': { bg: '#eff6ff', text: '#2563eb' },
-  resolved: { bg: '#f0fdf4', text: '#16a34a' },
-};
-
-const CATEGORY_LABELS: Record<ComplaintCategory, string> = {
-  road: 'Road',
-  garbage: 'Garbage',
-  lighting: 'Lighting',
-  drainage: 'Drainage',
-  other: 'Other',
-};
-
-const CATEGORY_COLORS: Record<ComplaintCategory, string> = {
-  road: '#d97706',
-  garbage: '#3b82f6',
-  lighting: '#eab308',
-  drainage: '#06b6d4',
-  other: '#6b7280',
-};
-
-const STATUS_LABELS: Record<ComplaintStatus, string> = {
-  pending: 'Pending',
-  'in-progress': 'In Progress',
-  resolved: 'Resolved',
-};
-
-const URGENCY_LABELS: Record<ComplaintUrgency, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
-
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
 
-// --- Pagination Subcomponent ---
 function Pagination({
   currentPage,
   totalPages,
@@ -158,7 +117,6 @@ function Pagination({
   );
 }
 
-// --- Main Component ---
 export const ComplaintMonitor = () => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -168,6 +126,8 @@ export const ComplaintMonitor = () => {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | 'all'>('all');
   const [urgencyFilter, setUrgencyFilter] = useState<ComplaintUrgency | 'all'>('all');
+
+  const originalRef = useRef<Complaint | null>(null);
 
   const fetchGrievances = async () => {
     try {
@@ -188,20 +148,33 @@ export const ComplaintMonitor = () => {
   };
 
   const handleUpdate = async (id: string, updatedComplaint: Complaint) => {
+    const orig = originalRef.current;
+    if (!orig) return;
+
+    const changedFields: Record<string, unknown> = {};
+    if (updatedComplaint.title !== orig.title) changedFields.title = updatedComplaint.title;
+    if (updatedComplaint.description !== orig.description)
+      changedFields.description = updatedComplaint.description;
+    if (updatedComplaint.category !== orig.category)
+      changedFields.category = updatedComplaint.category;
+    if (updatedComplaint.urgency !== orig.urgency) changedFields.urgency = updatedComplaint.urgency;
+    if (updatedComplaint.status !== orig.status) changedFields.status = updatedComplaint.status;
+    if (updatedComplaint.reporter !== orig.reporter)
+      changedFields.reporter = updatedComplaint.reporter;
+    if (updatedComplaint.reportedAt !== orig.reportedAt)
+      changedFields.reported_at = updatedComplaint.reportedAt;
+
+    if (Object.keys(changedFields).length === 0) {
+      setEditingId(null);
+      return;
+    }
+
     try {
       setError(null);
 
       const { error: supabaseError } = await supabase
         .from('grievances')
-        .update({
-          title: updatedComplaint.title,
-          description: updatedComplaint.description,
-          category: updatedComplaint.category,
-          urgency: updatedComplaint.urgency,
-          status: updatedComplaint.status,
-          reporter: updatedComplaint.reporter,
-          reported_at: updatedComplaint.reportedAt,
-        })
+        .update(changedFields)
         .eq('id', id);
 
       if (supabaseError) throw supabaseError;
@@ -221,6 +194,19 @@ export const ComplaintMonitor = () => {
 
   const handleLocalChange = (id: string, updates: Partial<Complaint>) => {
     setComplaints((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+  };
+
+  const handleEditStart = (complaint: Complaint) => {
+    originalRef.current = { ...complaint };
+    setEditingId(complaint.id);
+  };
+
+  const handleCancel = () => {
+    if (editingId && originalRef.current) {
+      setComplaints((prev) => prev.map((c) => (c.id === editingId ? originalRef.current! : c)));
+    }
+    setEditingId(null);
+    originalRef.current = null;
   };
 
   const filtered = complaints
@@ -253,7 +239,7 @@ export const ComplaintMonitor = () => {
             Complaint Monitoring
           </h2>
           <p className="text-xs" style={{ color: '#72796e' }}>
-            {complaints.length} total complaints
+            {complaints.length} total complaint{complaints.length !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
@@ -264,61 +250,41 @@ export const ComplaintMonitor = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-3">
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#ffffff', borderColor: '#e5e2e1' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>
-            Total
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#1c1b1b' }}>
-            {summary.total}
-          </p>
+      <div
+        className="rounded-xl border p-4 shadow-sm"
+        style={{ backgroundColor: '#ffffff', borderColor: '#e5e2e1' }}
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
+            <AlertTriangle className="h-6 w-6 text-gray-600" />
+          </div>
+          <div>
+            <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>
+              Total Complaints
+            </p>
+            <p className="text-3xl font-bold" style={{ color: '#1c1b1b' }}>
+              {summary.total}
+            </p>
+          </div>
         </div>
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#fff7ed', borderColor: '#fed7aa' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#ea580c' }}>
-            Pending
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#ea580c' }}>
-            {summary.pending}
-          </p>
-        </div>
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#2563eb' }}>
-            In Progress
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#2563eb' }}>
-            {summary.inProgress}
-          </p>
-        </div>
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#16a34a' }}>
-            Resolved
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#16a34a' }}>
-            {summary.resolved}
-          </p>
-        </div>
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#dc2626' }}>
-            Critical
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#dc2626' }}>
-            {summary.critical}
-          </p>
+        <div className="mt-3 flex flex-wrap gap-3 border-t pt-3" style={{ borderColor: '#f0eded' }}>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600">
+            <Clock className="h-3 w-3" />
+            {summary.pending} Pending
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
+            <MapPin className="h-3 w-3" />
+            {summary.inProgress} In Progress
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-600">
+            <CheckCircle2 className="h-3 w-3" />
+            {summary.resolved} Resolved
+          </span>
+          {summary.critical > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+              ! {summary.critical} Critical
+            </span>
+          )}
         </div>
       </div>
 
@@ -574,10 +540,7 @@ export const ComplaintMonitor = () => {
                               <Check className="h-3.5 w-3.5" />
                             </button>
                             <button
-                              onClick={() => {
-                                setEditingId(null);
-                                fetchGrievances();
-                              }}
+                              onClick={handleCancel}
                               className="rounded-lg p-1.5 transition-all hover:scale-110"
                               style={{ color: '#72796e' }}
                             >
@@ -657,7 +620,7 @@ export const ComplaintMonitor = () => {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1 opacity-0 transition-all duration-200 group-hover:opacity-100">
                             <button
-                              onClick={() => setEditingId(complaint.id)}
+                              onClick={() => handleEditStart(complaint)}
                               className="rounded-lg p-1.5 transition-all hover:scale-110"
                               style={{ color: '#72796e' }}
                               title="Edit"

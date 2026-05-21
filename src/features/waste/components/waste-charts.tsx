@@ -24,44 +24,11 @@ import {
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { WasteCategory } from '@/features/waste/types';
 import { useWasteRecords } from '@/features/waste/api/use-waste-records';
+import { CATEGORY_COLORS, CATEGORY_LABELS } from '@/features/waste/constants';
+import type { WasteCategory } from '@/features/waste/types';
 
 type Period = 'weekly' | 'monthly' | 'yearly';
-
-const CATEGORY_COLORS: Record<WasteCategory, string> = {
-  'organic-food': '#22c55e',
-  'paper-cardboard': '#3b82f6',
-  'plastic-soft-packaging': '#eab308',
-  'plastic-pet-hdpe': '#f97316',
-  textile: '#ec4899',
-  glass: '#06b6d4',
-  'metal-aluminum': '#a855f7',
-  'e-waste': '#ef4444',
-  'infectious-waste': '#be123c',
-  'leather-rubber': '#78716c',
-  wood: '#d97706',
-  'sanitary-waste': '#94a3b8',
-  'green-plant-materials': '#10b981',
-  'construction-demolition': '#92400e',
-};
-
-const CATEGORY_LABELS: Record<WasteCategory, string> = {
-  'organic-food': 'Organic/Food waste',
-  'paper-cardboard': 'Paper & Cardboard',
-  'plastic-soft-packaging': 'Plastic soft packaging',
-  'plastic-pet-hdpe': 'Plastic (PET&HDPE)',
-  textile: 'Textile',
-  glass: 'Glass',
-  'metal-aluminum': 'Metal, Aluminum',
-  'e-waste': 'E-waste',
-  'infectious-waste': 'Infectious waste',
-  'leather-rubber': 'Leather, Rubber',
-  wood: 'Wood',
-  'sanitary-waste': 'Sanitary waste',
-  'green-plant-materials': 'Green plant materials',
-  'construction-demolition': 'Construction & Demolition wastes',
-};
 
 function getDateRange(period: Period): { start: Date; end: Date } {
   const now = new Date();

@@ -1,5 +1,6 @@
 import { createBrowserRouter, redirect } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { getUserRole } from '@/lib/role-query';
 import { LandingPage } from './landing-page';
 import { AdminPage } from './admin-page';
 import { LoginPage } from './login-page';
@@ -7,6 +8,7 @@ import { NotFoundPage } from './not-found-page';
 import { AuthCallbackPage } from './auth-callback-page';
 import { MapPage } from './map-page';
 import { ComplaintDetailPage } from './complaint-detail-page';
+import { LeaderboardPage } from './leaderboard-page';
 import { ProtectedRoute } from '@/components/layout/protected-route';
 import { AdminRoute } from '@/components/layout/admin-route';
 
@@ -19,13 +21,9 @@ export const router = createBrowserRouter([
       } = await supabase.auth.getSession();
       if (!session) return null;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
+      const role = await getUserRole(session);
 
-      if (profile?.role === 'admin') return redirect('/dashboard');
+      if (role === 'admin') return redirect('/dashboard');
       return redirect('/map');
     },
     element: <LandingPage />,
@@ -42,6 +40,11 @@ export const router = createBrowserRouter([
     path: '/map',
     element: <ProtectedRoute />,
     children: [{ index: true, element: <MapPage /> }],
+  },
+  {
+    path: '/leaderboard',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <LeaderboardPage /> }],
   },
   {
     path: '/dashboard',
