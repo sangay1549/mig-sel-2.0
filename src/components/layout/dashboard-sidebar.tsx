@@ -10,6 +10,7 @@ import {
   Table2,
   ChevronDown,
   ChevronRight,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSignOut } from '@/features/auth/api/use-sign-out';
@@ -37,16 +38,24 @@ const navItems = [
 export function DashboardSidebar({
   activeView,
   onNavigate,
+  isMobileOpen,
+  onMobileClose,
 }: {
   activeView: NavView;
   onNavigate: (view: NavView) => void;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
 }) {
   const navigate = useNavigate();
   const signOut = useSignOut();
   const [wasteExpanded, setWasteExpanded] = useState(true);
 
   return (
-    <aside className="bg-card fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r">
+    <aside
+      className={`bg-card fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r transition-transform duration-300 ${
+        isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0`}
+    >
       <div className="flex h-16 shrink-0 items-center gap-3 border-b px-5">
         <div className="bg-primary flex h-9 w-9 items-center justify-center rounded-lg">
           <Leaf className="text-primary-foreground h-5 w-5" />
@@ -57,6 +66,14 @@ export function DashboardSidebar({
             Admin
           </span>
         </div>
+        {onMobileClose && (
+          <button
+            onClick={onMobileClose}
+            className="hover:bg-accent ml-auto rounded-lg p-1.5 transition-all md:hidden"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">

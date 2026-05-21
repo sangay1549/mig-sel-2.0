@@ -17,7 +17,7 @@ export const useUserProfile = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, points, role')
+        .select('id, username, avatar_url, points, role')
         .eq('id', session.user.id)
         .single();
 

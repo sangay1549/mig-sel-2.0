@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { grievanceKeys } from '../api/use-grievances';
+import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
+import { awardPointsForSubmission } from '@/features/complaint/utils/award-points';
 
 interface GrievanceInput {
   title: string;
@@ -20,10 +22,14 @@ export const useCreateGrievance = () => {
       const { data, error } = await supabase.from('grievances').insert(input).select().single();
 
       if (error) throw error;
+
+      await awardPointsForSubmission(input.reporter_id);
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grievanceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
     },
   });
 };

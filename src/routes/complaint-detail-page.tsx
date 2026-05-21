@@ -1,12 +1,24 @@
 import { useState, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Clock, CheckCircle2, MoveRight, Upload, Loader2, X, Save } from 'lucide-react';
+import {
+  ArrowLeft,
+  Clock,
+  CheckCircle2,
+  MoveRight,
+  Upload,
+  Loader2,
+  X,
+  Save,
+  Trophy,
+  Menu,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
 import { useComplaint } from '@/features/complaint/api/use-complaint';
 import { useUpdateComplaint } from '@/features/complaint/api/use-update-complaint';
 import { uploadGrievanceImage } from '@/features/auth/grievance/components/use-upload-image';
+import { ImageLightbox } from '@/features/auth/grievance/components/image-lightbox';
 import {
   URGENCY_BADGE_WITH_HOVER as URGENCY_BADGE,
   STATUS_BADGE,
@@ -31,6 +43,7 @@ export const ComplaintDetailPage = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const urgencyRef = useRef<HTMLDivElement>(null);
 
@@ -38,13 +51,14 @@ export const ComplaintDetailPage = () => {
 
   const handleSidebarNavigate = () => {
     navigate('/dashboard');
+    setSidebarOpen(false);
   };
 
   if (isLoading) {
     return (
       <div className="bg-muted flex min-h-screen">
         <DashboardSidebar activeView="complaint" onNavigate={handleSidebarNavigate} />
-        <div className="ml-60 flex flex-1 items-center justify-center">
+        <div className="flex flex-1 items-center justify-center md:ml-60">
           <p className="text-muted-foreground text-sm">Loading complaint...</p>
         </div>
       </div>
@@ -55,9 +69,9 @@ export const ComplaintDetailPage = () => {
     return (
       <div className="bg-muted flex min-h-screen">
         <DashboardSidebar activeView="complaint" onNavigate={handleSidebarNavigate} />
-        <div className="ml-60 flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col md:ml-60">
           <main className="flex-1 overflow-auto">
-            <div className="mx-auto px-8 py-8" style={{ maxWidth: '1200px' }}>
+            <div className="mx-auto px-4 py-6 sm:px-6 lg:px-8" style={{ maxWidth: '1200px' }}>
               <Button variant="outline" size="sm" asChild>
                 <Link to="/dashboard">
                   <ArrowLeft className="mr-1 h-4 w-4" />
@@ -122,12 +136,37 @@ export const ComplaintDetailPage = () => {
 
   return (
     <div className="bg-muted flex min-h-screen">
-      <DashboardSidebar activeView="complaint" onNavigate={handleSidebarNavigate} />
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <div className="ml-60 flex flex-1 flex-col">
+      <DashboardSidebar
+        activeView="complaint"
+        onNavigate={handleSidebarNavigate}
+        isMobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
+      />
+
+      <div className="flex flex-1 flex-col md:ml-60">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 md:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="hover:bg-accent rounded-lg p-1.5 transition-all"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-sm font-bold tracking-tight">{complaint.title}</h1>
+            <p className="text-muted-foreground/70 truncate text-xs">Complaint Details</p>
+          </div>
+        </header>
+
         <main className="flex-1 overflow-auto">
           <div
-            className="animate-fade-in mx-auto space-y-6 px-8 py-8"
+            className="animate-fade-in mx-auto space-y-6 px-4 py-6 sm:px-6 lg:px-8"
             style={{ maxWidth: '1200px' }}
           >
             <Button variant="outline" size="sm" asChild>
@@ -222,7 +261,11 @@ export const ComplaintDetailPage = () => {
 
             {complaint.image_url && (
               <div className="border-border/50 overflow-hidden rounded-xl border bg-black/5 shadow-sm">
-                <img src={complaint.image_url} alt="Complaint" className="w-full object-contain" />
+                <ImageLightbox
+                  src={complaint.image_url}
+                  alt="Complaint"
+                  className="w-full object-contain"
+                />
               </div>
             )}
 
@@ -261,13 +304,122 @@ export const ComplaintDetailPage = () => {
                     <label className="text-muted-foreground/60 text-xs font-bold tracking-wide uppercase">
                       Resolved Image
                     </label>
-                    <img
+                    <ImageLightbox
                       src={complaint.resolved_image_url}
                       alt="Resolved"
                       className="border-border/50 mt-1 w-full rounded-xl border bg-black/5 object-contain shadow-sm"
                     />
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Points info */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+                    <Trophy className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-foreground text-sm font-bold tracking-tight">
+                      Points Earned
+                    </h2>
+                    <p className="text-muted-foreground/70 text-xs">
+                      Points awarded to the reporter for this complaint
+                    </p>
+                  </div>
+                </div>
+                {(() => {
+                  const bonus = complaint.bonus_awarded ?? 0;
+                  const hasInProgress = (bonus & 1) !== 0;
+                  const hasResolved = complaint.status === 'resolved';
+                  return (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                        <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                          Submission
+                        </p>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <Upload className="h-4 w-4 text-green-600" />
+                          <span className="text-lg font-bold text-green-700">+1</span>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                        </div>
+                      </div>
+                      <div
+                        className={`rounded-lg border p-3 ${hasInProgress ? 'border-green-200 bg-green-50' : selectedStatus === 'in-progress' ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}
+                      >
+                        <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                          In Progress
+                        </p>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <MoveRight
+                            className={`h-4 w-4 ${hasInProgress ? 'text-green-600' : selectedStatus === 'in-progress' ? 'text-amber-600' : 'text-gray-400'}`}
+                          />
+                          <span
+                            className={`text-lg font-bold ${hasInProgress ? 'text-green-700' : selectedStatus === 'in-progress' ? 'text-amber-700' : 'text-gray-400'}`}
+                          >
+                            +1
+                          </span>
+                          {hasInProgress ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                          ) : selectedStatus === 'in-progress' ? (
+                            <span className="text-[10px] font-semibold text-amber-600">
+                              Pending
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div
+                        className={`rounded-lg border p-3 ${hasResolved ? 'border-green-200 bg-green-50' : selectedStatus === 'resolved' ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}
+                      >
+                        <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                          Resolved
+                        </p>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <CheckCircle2
+                            className={`h-4 w-4 ${hasResolved ? 'text-green-600' : selectedStatus === 'resolved' ? 'text-amber-600' : 'text-gray-400'}`}
+                          />
+                          <span
+                            className={`text-lg font-bold ${hasResolved ? 'text-green-700' : selectedStatus === 'resolved' ? 'text-amber-700' : 'text-gray-400'}`}
+                          >
+                            +2
+                          </span>
+                          {hasResolved ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                          ) : selectedStatus === 'resolved' ? (
+                            <span className="text-[10px] font-semibold text-amber-600">
+                              Pending
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {(() => {
+                  const bonus = complaint.bonus_awarded ?? 0;
+                  const total = 1 + (bonus & 1 ? 1 : 0) + (bonus & 2 ? 2 : 0);
+                  return (
+                    <p
+                      className="mt-3 border-t pt-3 text-xs"
+                      style={{ color: total === 4 ? '#16a34a' : '#6b7280' }}
+                    >
+                      {total === 4 ? (
+                        <>
+                          <CheckCircle2 className="mr-1 inline h-3.5 w-3.5 text-green-600" />
+                          Max <strong>4 points</strong> awarded for this complaint.
+                        </>
+                      ) : (
+                        <>
+                          Currently <strong>{total} / 4</strong> points awarded. Select a new status
+                          above to adjust.
+                        </>
+                      )}
+                    </p>
+                  );
+                })()}
               </CardContent>
             </Card>
 
@@ -321,6 +473,13 @@ export const ComplaintDetailPage = () => {
                         </button>
                       ))}
                     </div>
+                    {selectedStatus && selectedStatus !== complaint.status && (
+                      <p className="mt-2 text-xs text-amber-600">
+                        <Trophy className="mr-1 inline h-3 w-3" />
+                        Update to <strong>{STATUS_LABELS[selectedStatus]}</strong> will adjust the
+                        reporter's points accordingly
+                      </p>
+                    )}
                   </div>
 
                   <div>

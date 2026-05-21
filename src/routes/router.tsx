@@ -9,6 +9,7 @@ import { AuthCallbackPage } from './auth-callback-page';
 import { MapPage } from './map-page';
 import { ComplaintDetailPage } from './complaint-detail-page';
 import { LeaderboardPage } from './leaderboard-page';
+import { ShopPage } from './shop-page';
 import { ProtectedRoute } from '@/components/layout/protected-route';
 import { AdminRoute } from '@/components/layout/admin-route';
 
@@ -45,6 +46,11 @@ export const router = createBrowserRouter([
     path: '/leaderboard',
     element: <ProtectedRoute />,
     children: [{ index: true, element: <LeaderboardPage /> }],
+  },
+  {
+    path: '/shop',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <ShopPage /> }],
   },
   {
     path: '/dashboard',
