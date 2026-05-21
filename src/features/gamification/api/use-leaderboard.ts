@@ -12,8 +12,8 @@ export const useLeaderboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, points')
-        .gt('points', 0)
+        .select('id, username, avatar_url, points')
+        .or('points.gt.0,username.not.is.null')
         .order('points', { ascending: false })
         .limit(50);
 

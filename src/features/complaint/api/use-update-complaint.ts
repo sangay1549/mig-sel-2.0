@@ -1,27 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { Complaint, ComplaintStatus } from '@/features/complaint/types';
+import type { Complaint } from '@/features/complaint/types';
 import { complaintKeys } from './use-complaints';
-
-const awardPoints = async (userId: string, points: number) => {
-  if (!userId) return;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('points')
-    .eq('id', userId)
-    .single();
-
-  const currentPoints = profile?.points ?? 0;
-  await supabase
-    .from('profiles')
-    .update({ points: currentPoints + points })
-    .eq('id', userId);
-};
-
-const POINTS_MAP: Partial<Record<ComplaintStatus, number>> = {
-  pending: 2,
-  resolved: 3,
-};
+import { grievanceKeys } from '@/features/auth/grievance/api/use-grievances';
+import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
+import { awardPointsForStatus } from '@/features/complaint/utils/award-points';
 
 export const useUpdateComplaint = () => {
   const queryClient = useQueryClient();
@@ -41,6 +24,12 @@ export const useUpdateComplaint = () => {
         .eq('id', id)
         .single();
 
+      if (fields.status && fields.status !== current?.status) {
+        if (fields.status === 'resolved') {
+          fields.resolved_at = new Date().toISOString();
+        }
+      }
+
       const { data, error } = await supabase
         .from('grievances')
         .update(fields)
@@ -57,15 +46,14 @@ export const useUpdateComplaint = () => {
         );
       }
 
-      if (current && fields.status && fields.status !== current.status) {
-        const pts = POINTS_MAP[fields.status];
-        if (pts && current.reporter_id) {
-          await awardPoints(current.reporter_id, pts);
-        }
+      if (fields.status && current && fields.status !== current.status) {
+        await awardPointsForStatus(current.reporter_id, id, current.status, fields.status);
       }
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: complaintKeys.all });
+      await queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
+      await queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
     },
   });
 };

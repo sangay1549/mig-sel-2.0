@@ -1,5 +1,6 @@
 import { Trophy, Medal, Award, Loader2, User } from 'lucide-react';
 import { useLeaderboard } from '@/features/gamification/api/use-leaderboard';
+import { useSession } from '@/features/auth/api/use-session';
 
 const rankIcon = (rank: number) => {
   if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
@@ -15,8 +16,53 @@ const rankBg = (rank: number) => {
   return 'border-gray-100';
 };
 
+const Avatar = ({
+  url,
+  username,
+  className = '',
+}: {
+  url: string | null;
+  username: string | null;
+  className?: string;
+}) => {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={username ?? 'Avatar'}
+        className={`rounded-full object-cover ${className}`}
+      />
+    );
+  }
+
+  const initials = (username ?? '')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  if (initials) {
+    return (
+      <div
+        className={`flex items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-600 ${className}`}
+      >
+        {initials}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-center justify-center rounded-full bg-gray-100 ${className}`}>
+      <User className="h-5 w-5 text-gray-500" />
+    </div>
+  );
+};
+
 export const Leaderboard = () => {
   const { data: entries, isLoading, isError, error } = useLeaderboard();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
 
   if (isLoading) {
     return (
@@ -49,20 +95,23 @@ export const Leaderboard = () => {
       {entries.map((entry) => (
         <div
           key={entry.id}
-          className={`flex items-center gap-4 rounded-xl border p-4 transition-all ${rankBg(entry.rank)}`}
+          className={`flex items-center gap-4 rounded-xl border p-4 transition-all ${rankBg(entry.rank)} ${entry.id === currentUserId ? 'ring-primary/30 ring-2' : ''}`}
         >
           <div className="flex w-8 items-center justify-center">
             {rankIcon(entry.rank) ?? (
               <span className="text-sm font-bold text-gray-400">{entry.rank}</span>
             )}
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-            <User className="h-5 w-5 text-gray-500" />
+          <Avatar url={entry.avatar_url} username={entry.username} className="h-10 w-10 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-gray-900">
+              {entry.username ?? 'Anonymous'}
+            </p>
+            {entry.id === currentUserId && (
+              <p className="text-primary text-[10px] font-medium">You</p>
+            )}
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-900">{entry.username ?? 'Anonymous'}</p>
-          </div>
-          <div className="text-right">
+          <div className="shrink-0 text-right">
             <p className="text-lg font-bold text-gray-900">{entry.points}</p>
             <p className="text-[10px] font-medium tracking-wide text-gray-400 uppercase">
               {entry.points === 1 ? 'Point' : 'Points'}

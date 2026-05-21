@@ -17,6 +17,7 @@ import {
   URGENCY_LABELS,
 } from '@/features/complaint/constants';
 import { Field } from '@/components/ui/field';
+import { ImageLightbox } from '@/features/auth/grievance/components/image-lightbox';
 import type { Complaint } from '@/features/complaint/types';
 
 export function ComplaintDetailDialog({
@@ -73,7 +74,7 @@ export function ComplaintDetailDialog({
 
           {complaint.image_url && (
             <div className="border-border/50 overflow-hidden rounded-xl border bg-black/5 shadow-sm">
-              <img
+              <ImageLightbox
                 src={complaint.image_url}
                 alt={complaint.title}
                 className="max-h-[50vh] w-full object-contain"
@@ -117,7 +118,7 @@ export function ComplaintDetailDialog({
               <p className="text-muted-foreground/60 text-xs font-bold tracking-wide uppercase">
                 Resolved Image
               </p>
-              <img
+              <ImageLightbox
                 src={complaint.resolved_image_url}
                 alt="Resolved"
                 className="border-border/50 mt-1 max-h-[50vh] w-full rounded-xl border bg-black/5 object-contain shadow-sm"
