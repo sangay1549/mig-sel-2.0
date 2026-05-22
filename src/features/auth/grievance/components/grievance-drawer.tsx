@@ -1,11 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { X, MapPin, UploadCloud, Camera, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useGeoLocation } from '../hooks/use-geo-location';
 import { uploadGrievanceImage } from './use-upload-image';
 import { useCreateGrievance } from './use-create-grievance';
 import { useCurrentUser } from '@/features/auth/api/use-current-user';
-import { supabase } from '@/lib/supabase';
 
 const CATEGORIES = [
   { value: 'road', label: 'Road Damage' },
@@ -33,30 +32,6 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('other');
 
-  const checkDuplicate = useCallback(
-    async (lat: number, lng: number) => {
-      const tolerance = 0.0001;
-      const { data } = await supabase
-        .from('grievances')
-        .select('title, description')
-        .gte('latitude', lat - tolerance)
-        .lte('latitude', lat + tolerance)
-        .gte('longitude', lng - tolerance)
-        .lte('longitude', lng + tolerance);
-
-      if (!data || data.length === 0) return null;
-
-      return (
-        data.find((g) => {
-          const sameTitle = g.title?.toLowerCase().trim() === title.toLowerCase().trim();
-          const sameDesc = g.description?.toLowerCase().trim() === description.toLowerCase().trim();
-          return sameTitle && sameDesc;
-        }) ?? null
-      );
-    },
-    [title, description],
-  );
-
   const submitReport = async () => {
     setMessage(null);
 
@@ -67,12 +42,6 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
 
     if (!gpsCoords) {
       setMessage({ type: 'error', text: 'Location not available. Please wait for GPS detection.' });
-      return;
-    }
-
-    const duplicate = await checkDuplicate(gpsCoords.lat, gpsCoords.lng);
-    if (duplicate) {
-      setMessage({ type: 'error', text: 'This issue has already been reported at this location.' });
       return;
     }
 
@@ -254,7 +223,7 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
 
           <Button
             disabled={isUploading || !selectedFile}
-            onClick={submitReport}
+            type="submit"
             className="bg-primary text-primary-foreground h-12 w-full rounded-lg font-bold shadow-lg"
           >
             {isUploading ? 'Submitting...' : 'Submit Report'}

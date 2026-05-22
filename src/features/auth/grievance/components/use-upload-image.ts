@@ -7,8 +7,8 @@ export const uploadGrievanceImage = async (file: File) => {
     throw new Error('File is too large. Maximum size is 10MB.');
   }
 
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${crypto.randomUUID()}.${fileExt}`;
+  const fileExt = file.name.split('.').pop() ?? '';
+  const fileName = `${crypto.randomUUID()}${fileExt ? '.' + fileExt : ''}`;
   const filePath = `reports/${fileName}`;
 
   const { error: uploadError } = await supabase.storage.from('grievances').upload(filePath, file);

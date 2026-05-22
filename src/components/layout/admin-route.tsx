@@ -1,28 +1,19 @@
 import { Navigate, Outlet } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useSession } from '@/features/auth/api/use-session';
+import { useIsAdmin } from '@/features/auth/api/use-is-admin';
+import { Loader2 } from 'lucide-react';
 
 export const AdminRoute = () => {
-  const { data: session } = useSession();
+  const { data: isAdmin, isLoading } = useIsAdmin();
 
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ['profile-role', session?.user?.id],
-    queryFn: async () => {
-      if (!session?.user?.id) return null;
-      const { data } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-      return data;
-    },
-    enabled: !!session?.user?.id,
-  });
+  if (isLoading) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
 
-  if (isLoading) return null;
-
-  if (profile?.role !== 'admin') return <Navigate to="/map" replace />;
+  if (!isAdmin) return <Navigate to="/map" replace />;
 
   return <Outlet />;
 };

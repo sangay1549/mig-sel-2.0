@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 
 interface GeoLocationState {
   coords: { lat: number; lng: number } | null;
+  accuracy: number | null;
   error: string | null;
   loading: boolean;
 }
@@ -33,6 +34,7 @@ export const useGeoLocation = () => {
 
   const [state, setState] = useState<GeoLocationState>({
     coords: cached,
+    accuracy: null,
     error: geoAvailable ? null : 'Geolocation is not supported by your browser',
     loading: geoAvailable && !cached,
   });
@@ -51,6 +53,7 @@ export const useGeoLocation = () => {
         if (prev.loading) {
           return {
             coords: null,
+            accuracy: null,
             error: 'Location detection timed out. Try again.',
             loading: false,
           };
@@ -64,7 +67,7 @@ export const useGeoLocation = () => {
       clearTimeout(loadingTimeout);
       const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
       setCachedPosition(coords.lat, coords.lng);
-      setState({ coords, error: null, loading: false });
+      setState({ coords, accuracy: position.coords.accuracy, error: null, loading: false });
     };
 
     const error = (err: GeolocationPositionError) => {
@@ -78,7 +81,7 @@ export const useGeoLocation = () => {
       } else if (err.code === err.TIMEOUT) {
         message = 'Location request timed out. Try again.';
       }
-      setState({ coords: null, error: message, loading: false });
+      setState({ coords: null, accuracy: null, error: message, loading: false });
     };
 
     const watchId = navigator.geolocation.watchPosition(success, error, {

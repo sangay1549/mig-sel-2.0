@@ -1,41 +1,53 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '@/lib/supabase';
+import { getUserRole } from '@/lib/role-query';
+import type { Session } from '@supabase/supabase-js';
 
 export const AuthCallbackPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+    let cancelled = false;
 
-      if (sessionError || !session) {
+    const redirectByRole = async (session: Session) => {
+      const role = await getUserRole(session);
+
+      if (!cancelled) {
+        navigate(role === 'admin' ? '/dashboard' : '/map');
+      }
+    };
+
+    const handleAuthCallback = async () => {
+      const auth = await supabase.auth.getSession();
+      const session = auth.data.session;
+      const sessionError = auth.error;
+
+      if (sessionError) {
         navigate('/login');
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        navigate('/');
+      if (session) {
+        redirectByRole(session);
         return;
       }
 
-      if (profile.role === 'admin') {
-        navigate('/dashboard');
-      } else {
-        navigate('/map');
-      }
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        if (newSession) {
+          subscription.unsubscribe();
+          redirectByRole(newSession);
+        }
+      });
     };
 
     handleAuthCallback();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   return (

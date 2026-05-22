@@ -1,12 +1,28 @@
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useGrievances } from '../api/use-grievances';
 import { useGeoLocation } from '../hooks/use-geo-location';
-import { Search, Loader2, Navigation, Plus, Minus } from 'lucide-react';
+import {
+  Search,
+  Loader2,
+  Navigation,
+  Plus,
+  Minus,
+  Maximize2,
+  Minimize2,
+  Map as MapIcon,
+  Satellite as SatelliteIcon,
+  ArrowRight,
+  ChevronDown,
+  Check,
+} from 'lucide-react';
+import { DirectionsControl } from './directions-control';
+import { ImageLightbox } from './image-lightbox';
 
 const SARPANG_BOUNDS = L.latLngBounds([26.7032, 89.9213], [27.2401, 90.7235]);
+const DEFAULT_CENTER = { lat: 26.9312, lng: 90.4795 };
 
 function categoryIcon(category: string, status: string): L.DivIcon {
   const colors: Record<string, string> = {
@@ -80,6 +96,122 @@ function categoryIcon(category: string, status: string): L.DivIcon {
   });
 }
 
+function clusterIcon(count: number): L.DivIcon {
+  const color =
+    count <= 3 ? '#22c55e' : count <= 6 ? '#eab308' : count <= 10 ? '#f97316' : '#ef4444';
+
+  const glow = color + '44';
+
+  return L.divIcon({
+    html: `<div style="
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="
+        width: 44px;
+        height: 44px;
+        background: ${color};
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.3), 0 0 0 3px ${glow};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 800;
+        font-size: 15px;
+        font-family: system-ui, sans-serif;
+      ">
+        ${count}
+      </div>
+    </div>`,
+    className: '',
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+    popupAnchor: [0, -24],
+  });
+}
+
+function ClusterPopup({
+  grievances,
+  lat,
+  lng,
+  onNavigate,
+}: {
+  grievances: Array<{
+    id: string;
+    title: string;
+    category: string;
+    mapStatus: string;
+    desc: string;
+    image_url: string;
+    resolved_image_url?: string;
+  }>;
+  lat: number;
+  lng: number;
+  onNavigate: (lat: number, lng: number, title: string) => void;
+}) {
+  return (
+    <div className="max-h-[300px] max-w-[260px] overflow-y-auto font-sans">
+      <p className="sticky top-0 bg-white pb-1.5 text-[11px] font-bold tracking-wider text-gray-500 uppercase">
+        {grievances.length} reports at this location
+      </p>
+      <div className="space-y-2">
+        {grievances.map((g) => (
+          <div key={g.id} className="border-t border-gray-100 pt-2 first:border-t-0 first:pt-0">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="text-sm leading-tight font-semibold text-gray-900">{g.title}</h4>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
+                  g.mapStatus === 'pending'
+                    ? 'bg-red-100 text-red-700'
+                    : g.mapStatus === 'in-progress'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-green-100 text-green-700'
+                }`}
+              >
+                {g.mapStatus === 'in-progress'
+                  ? 'In Progress'
+                  : g.mapStatus === 'pending'
+                    ? 'Pending'
+                    : 'Resolved'}
+              </span>
+            </div>
+
+            {g.image_url && (
+              <ImageLightbox
+                src={g.image_url}
+                alt=""
+                className="mt-1.5 h-20 w-full rounded-lg object-cover"
+              />
+            )}
+
+            {g.desc && (
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-600">{g.desc}</p>
+            )}
+
+            <div className="mt-1 text-[11px] font-medium text-gray-500">
+              Category:{' '}
+              <strong className="text-gray-800 uppercase">{categoryLabel(g.category)}</strong>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => onNavigate(lat, lng, `${grievances.length} reports`)}
+        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95"
+      >
+        <Navigation className="h-3.5 w-3.5" />
+        Directions to this location
+        <ArrowRight className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function mapStatus(status: string): string {
   if (status === 'submitted' || status === 'in_review') return 'pending';
   if (status === 'assigned' || status === 'in_progress') return 'in-progress';
@@ -113,14 +245,14 @@ function ZoomControls() {
 
   return (
     <div
-      className="leaflet-bottom leaflet-right flex flex-col gap-0.5"
-      style={{ zIndex: 1000, marginBottom: 140, marginRight: 10 }}
+      className="absolute right-0 bottom-0 flex flex-col gap-px"
+      style={{ zIndex: 1000, marginBottom: 22, marginRight: 10 }}
     >
       <button
         onClick={() => map.zoomIn()}
         title="Zoom in"
         aria-label="Zoom in"
-        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-t-lg bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-t-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
       >
         <Plus className="h-5 w-5 text-gray-700" />
       </button>
@@ -128,7 +260,7 @@ function ZoomControls() {
         onClick={() => map.zoomOut()}
         title="Zoom out"
         aria-label="Zoom out"
-        className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-b-lg bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95"
+        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-b-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
       >
         <Minus className="h-5 w-5 text-gray-700" />
       </button>
@@ -141,47 +273,67 @@ function SearchBox() {
   return <MapSearch map={map} />;
 }
 
-function UserLocationDot() {
-  const { coords: detectedCoords } = useGeoLocation();
+function UserLocationDot({
+  coords: detectedCoords,
+  accuracy,
+}: {
+  coords: { lat: number; lng: number } | null;
+  accuracy: number | null;
+}) {
   const map = useMap();
 
   useEffect(() => {
-    if (detectedCoords) {
-      const el = L.circleMarker([detectedCoords.lat, detectedCoords.lng], {
-        radius: 10,
-        color: '#2563eb',
-        fillColor: '#3b82f6',
-        fillOpacity: 0.4,
-        weight: 3,
-        opacity: 0.9,
-      }).addTo(map);
+    if (!detectedCoords) return;
 
-      const pulse = L.circleMarker([detectedCoords.lat, detectedCoords.lng], {
-        radius: 6,
+    const layers: L.Layer[] = [];
+
+    if (accuracy != null && accuracy > 0 && accuracy < 500) {
+      const accCircle = L.circle([detectedCoords.lat, detectedCoords.lng], {
+        radius: accuracy,
         color: '#3b82f6',
-        fillColor: '#60a5fa',
-        fillOpacity: 0.8,
-        weight: 2,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.08,
+        weight: 1,
+        opacity: 0.25,
       }).addTo(map);
-
-      return () => {
-        map.removeLayer(el);
-        map.removeLayer(pulse);
-      };
+      layers.push(accCircle);
     }
-  }, [detectedCoords, map]);
+
+    const dot = L.circleMarker([detectedCoords.lat, detectedCoords.lng], {
+      radius: 10,
+      color: '#2563eb',
+      fillColor: '#3b82f6',
+      fillOpacity: 0.4,
+      weight: 3,
+      opacity: 0.9,
+    }).addTo(map);
+    layers.push(dot);
+
+    const pulse = L.circleMarker([detectedCoords.lat, detectedCoords.lng], {
+      radius: 6,
+      color: '#3b82f6',
+      fillColor: '#60a5fa',
+      fillOpacity: 0.8,
+      weight: 2,
+    }).addTo(map);
+    layers.push(pulse);
+
+    return () => {
+      layers.forEach((l) => map.removeLayer(l));
+    };
+  }, [detectedCoords, map, accuracy]);
 
   return null;
 }
 
-function LocateButton() {
+function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: number } | null }) {
   const map = useMap();
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
-  const { coords: detectedCoords } = useGeoLocation();
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
@@ -227,8 +379,8 @@ function LocateButton() {
 
   return (
     <div
-      className="leaflet-bottom leaflet-right"
-      style={{ zIndex: 1000, marginBottom: 80, marginRight: 10 }}
+      className="absolute right-0 bottom-0"
+      style={{ zIndex: 1000, marginBottom: 100, marginRight: 10 }}
     >
       {error && (
         <div
@@ -385,12 +537,294 @@ function MapSearch({ map }: { map: L.Map }) {
   );
 }
 
+const MAP_STYLES = [
+  { key: 'street', label: 'Map', icon: MapIcon },
+  { key: 'osm', label: 'OSM', icon: MapIcon },
+  { key: 'satellite', label: 'Sat', icon: SatelliteIcon },
+] as const;
+
+type MapStyle = (typeof MAP_STYLES)[number]['key'];
+
+function MapStyleSwitcher({
+  mapStyle,
+  onChange,
+}: {
+  mapStyle: MapStyle;
+  onChange: (style: MapStyle) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const current = MAP_STYLES.find((s) => s.key === mapStyle)!;
+  const Icon = current.icon;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-gray-700 shadow-md ring-1 ring-gray-200/50 backdrop-blur-md transition-all hover:bg-white"
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {current.label}
+        <ChevronDown className="h-3 w-3 text-gray-400" />
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 mt-1 w-32 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-gray-200/50">
+          {MAP_STYLES.map((s) => {
+            const ItemIcon = s.icon;
+            const isActive = mapStyle === s.key;
+            return (
+              <button
+                key={s.key}
+                onClick={() => {
+                  onChange(s.key);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold transition-all ${
+                  isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <ItemIcon className="h-3.5 w-3.5" />
+                {s.label}
+                {isActive && <Check className="ml-auto h-3.5 w-3.5" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FullscreenButton({
+  containerRef,
+}: {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onchange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onchange);
+    return () => document.removeEventListener('fullscreenchange', onchange);
+  }, []);
+
+  const toggle = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/90 shadow-md ring-1 ring-gray-200/50 backdrop-blur-md transition-all hover:bg-white active:scale-95"
+      title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+    >
+      {isFullscreen ? (
+        <Minimize2 className="h-4 w-4 text-gray-700" />
+      ) : (
+        <Maximize2 className="h-4 w-4 text-gray-700" />
+      )}
+    </button>
+  );
+}
+
+function ScaleControl() {
+  const map = useMap();
+
+  useEffect(() => {
+    const scale = L.control.scale({
+      position: 'bottomleft',
+      imperial: false,
+      metric: true,
+    });
+    scale.addTo(map);
+    return () => {
+      scale.remove();
+    };
+  }, [map]);
+
+  return null;
+}
+
+function GrievanceMarkers({
+  grievances,
+  onDirectionsTarget,
+}: {
+  grievances: Array<{
+    id: string;
+    title: string;
+    category: string;
+    status: string;
+    mapStatus: string;
+    lat: number;
+    lng: number;
+    desc: string;
+    image_url: string;
+    resolved_image_url?: string;
+  }>;
+  onDirectionsTarget: (lat: number, lng: number, title: string) => void;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useEffect(() => {
+    const handleZoom = () => setZoom(map.getZoom());
+    map.on('zoomend', handleZoom);
+    return () => {
+      map.off('zoomend', handleZoom);
+    };
+  }, [map]);
+
+  const precision = zoom >= 17 ? 5 : zoom >= 15 ? 4 : zoom >= 13 ? 3 : 2;
+
+  const grouped = useMemo(() => {
+    const map_ = new Map<string, typeof grievances>();
+    for (const g of grievances) {
+      const latStr = g.lat.toFixed(precision);
+      const lngStr = g.lng.toFixed(precision);
+      const key = `${latStr},${lngStr}`;
+      const existing = map_.get(key);
+      if (existing) {
+        existing.push(g);
+      } else {
+        map_.set(key, [g]);
+      }
+    }
+    return map_;
+  }, [grievances, precision]);
+
+  return Array.from(grouped.entries()).map(([key, items]) => {
+    if (items.length === 1) {
+      const g = items[0];
+      return (
+        <Marker key={g.id} position={[g.lat, g.lng]} icon={categoryIcon(g.category, g.mapStatus)}>
+          <Popup>
+            <div className="max-w-[250px] font-sans">
+              <div className="flex items-start justify-between gap-3">
+                <h4 className="text-sm leading-tight font-semibold text-gray-900">{g.title}</h4>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
+                    g.mapStatus === 'pending'
+                      ? 'bg-red-100 text-red-700'
+                      : g.mapStatus === 'in-progress'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-green-100 text-green-700'
+                  }`}
+                >
+                  {g.mapStatus === 'in-progress'
+                    ? 'In Progress'
+                    : g.mapStatus === 'pending'
+                      ? 'Pending'
+                      : 'Resolved'}
+                </span>
+              </div>
+
+              {g.image_url && (
+                <ImageLightbox
+                  src={g.image_url}
+                  alt="Complaint"
+                  className="mt-2 h-32 w-full rounded-lg object-cover"
+                />
+              )}
+
+              {g.resolved_image_url && g.mapStatus === 'resolved' && (
+                <div className="mt-2">
+                  <p className="text-[10px] font-bold tracking-wider text-green-600 uppercase">
+                    Resolved — Before / After
+                  </p>
+                  <div className="mt-1 flex gap-1">
+                    <ImageLightbox
+                      src={g.image_url}
+                      alt="Before"
+                      className="h-20 w-1/2 rounded-lg object-cover ring-1 ring-gray-200"
+                    />
+                    <ImageLightbox
+                      src={g.resolved_image_url}
+                      alt="After"
+                      className="h-20 w-1/2 rounded-lg object-cover ring-1 ring-green-300"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <p className="mt-2 text-xs leading-relaxed text-gray-600">{g.desc}</p>
+              <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2 text-[11px] font-medium text-gray-500">
+                <span>
+                  Category:{' '}
+                  <strong className="text-gray-800 uppercase">{categoryLabel(g.category)}</strong>
+                </span>
+              </div>
+              {g.lat !== DEFAULT_CENTER.lat && g.lng !== DEFAULT_CENTER.lng && (
+                <button
+                  onClick={() => {
+                    map.closePopup();
+                    onDirectionsTarget(g.lat, g.lng, g.title);
+                  }}
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95"
+                >
+                  <Navigation className="h-3.5 w-3.5" />
+                  Directions
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </Popup>
+        </Marker>
+      );
+    }
+
+    return (
+      <Marker key={key} position={[items[0].lat, items[0].lng]} icon={clusterIcon(items.length)}>
+        <Tooltip>
+          <div className="space-y-0.5">
+            <p className="text-xs font-bold text-gray-900">
+              {items.length} reports at this location
+            </p>
+            {items.map((g) => (
+              <p key={g.id} className="text-xs text-gray-600">
+                • {g.title || 'Untitled'}
+              </p>
+            ))}
+          </div>
+        </Tooltip>
+        <Popup>
+          <ClusterPopup
+            grievances={items}
+            lat={items[0].lat}
+            lng={items[0].lng}
+            onNavigate={(lat, lng, title) => onDirectionsTarget(lat, lng, title)}
+          />
+        </Popup>
+      </Marker>
+    );
+  });
+}
+
 export const GrievanceMap = () => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
-  const { coords: detectedCoords } = useGeoLocation();
+  const [mapStyle, setMapStyle] = useState<MapStyle>('osm');
+  const [directionsTarget, setDirectionsTarget] = useState<{
+    lat: number;
+    lng: number;
+    title: string;
+  } | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const { coords: detectedCoords, accuracy } = useGeoLocation();
   const { data: grievances, isLoading, isError, error } = useGrievances();
-
-  const DEFAULT_CENTER = { lat: 26.9312, lng: 90.4795 };
 
   const mappedGrievances = (grievances ?? []).map((g) => ({
     id: g.id,
@@ -434,7 +868,10 @@ export const GrievanceMap = () => {
         ))}
       </div>
 
-      <div className="group relative h-[calc(100dvh-13rem)] min-h-[400px] w-full overflow-hidden rounded-2xl border border-gray-200 shadow-lg md:h-[550px]">
+      <div
+        ref={mapContainerRef}
+        className="group relative h-[calc(100dvh-13rem)] min-h-[400px] w-full overflow-hidden rounded-2xl border border-gray-200 shadow-lg md:h-[550px]"
+      >
         {isLoading && (
           <div className="absolute inset-0 z-[1001] flex items-center justify-center bg-white/60">
             <p className="text-sm font-medium text-gray-500">Loading reports...</p>
@@ -451,148 +888,115 @@ export const GrievanceMap = () => {
           center={[26.9312, 90.4795]}
           zoom={13}
           minZoom={11}
-          maxZoom={17}
+          maxZoom={21}
           maxBounds={SARPANG_BOUNDS}
           maxBoundsViscosity={1.0}
-          className="z-0 h-full w-full"
+          className="z-10 h-full w-full bg-gray-100"
           zoomControl={false}
+          scrollWheelZoom={true}
+          doubleClickZoom={true}
+          touchZoom={true}
+          preferCanvas={true}
         >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap'
-          />
+          <ScaleControl />
+
+          {mapStyle === 'street' ? (
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+              maxZoom={20}
+            />
+          ) : mapStyle === 'osm' ? (
+            <TileLayer
+              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              maxZoom={19}
+            />
+          ) : (
+            <TileLayer
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/World_Imagery_with_Labels/MapServer/tile/{z}/{y}/{x}"
+              attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+              maxZoom={20}
+            />
+          )}
 
           <ZoomControls />
 
           <SearchBox />
 
-          <UserLocationDot />
+          <UserLocationDot coords={detectedCoords} accuracy={accuracy} />
 
-          <LocateButton />
+          <LocateButton coords={detectedCoords} />
 
-          {filteredGrievances.map((grievance) => (
-            <Marker
-              key={grievance.id}
-              position={[grievance.lat, grievance.lng]}
-              icon={categoryIcon(grievance.category, grievance.mapStatus)}
+          {directionsTarget && (
+            <DirectionsControl
+              destination={directionsTarget}
+              currentCoords={detectedCoords}
+              onClose={() => setDirectionsTarget(null)}
+            />
+          )}
+
+          <GrievanceMarkers
+            grievances={filteredGrievances}
+            onDirectionsTarget={(lat, lng, title) => setDirectionsTarget({ lat, lng, title })}
+          />
+
+          <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-black/[0.03]" />
+
+          <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2">
+            <MapStyleSwitcher mapStyle={mapStyle} onChange={setMapStyle} />
+            <div className="flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Live
+            </div>
+            <FullscreenButton containerRef={mapContainerRef} />
+          </div>
+
+          <div className="absolute right-4 bottom-4 z-[1000] flex items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3 w-3"
             >
-              <Popup>
-                <div className="max-w-[250px] font-sans">
-                  <div className="flex items-start justify-between gap-3">
-                    <h4 className="text-sm leading-tight font-semibold text-gray-900">
-                      {grievance.title}
-                    </h4>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
-                        grievance.mapStatus === 'pending'
-                          ? 'bg-red-100 text-red-700'
-                          : grievance.mapStatus === 'in-progress'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-green-100 text-green-700'
-                      }`}
-                    >
-                      {grievance.mapStatus === 'in-progress'
-                        ? 'In Progress'
-                        : grievance.mapStatus === 'pending'
-                          ? 'Pending'
-                          : 'Resolved'}
-                    </span>
-                  </div>
+              <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            {detectedCoords
+              ? `${detectedCoords.lat.toFixed(4)}, ${detectedCoords.lng.toFixed(4)}`
+              : 'Sarpang, Bhutan'}
+          </div>
 
-                  {grievance.image_url && (
-                    <img
-                      src={grievance.image_url}
-                      alt="Complaint"
-                      className="mt-2 h-32 w-full rounded-lg object-cover"
-                    />
-                  )}
-
-                  {grievance.resolved_image_url && grievance.mapStatus === 'resolved' && (
-                    <div className="mt-2">
-                      <p className="text-[10px] font-bold tracking-wider text-green-600 uppercase">
-                        Resolved — Before / After
-                      </p>
-                      <div className="mt-1 flex gap-1">
-                        <img
-                          src={grievance.image_url}
-                          alt="Before"
-                          className="h-20 w-1/2 rounded-lg object-cover ring-1 ring-gray-200"
-                        />
-                        <img
-                          src={grievance.resolved_image_url}
-                          alt="After"
-                          className="h-20 w-1/2 rounded-lg object-cover ring-1 ring-green-300"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <p className="mt-2 text-xs leading-relaxed text-gray-600">{grievance.desc}</p>
-                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2 text-[11px] font-medium text-gray-500">
-                    <span>
-                      Category:{' '}
-                      <strong className="text-gray-800 uppercase">
-                        {categoryLabel(grievance.category)}
-                      </strong>
-                    </span>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          <div className="absolute bottom-4 left-4 z-[1000] flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#d97706]" />
+              <span>Road</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb]" />
+              <span>Waste</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ca8a04]" />
+              <span>Lighting</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0891b2]" />
+              <span>Drainage</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#154212]" />
+              <span>Other</span>
+            </div>
+          </div>
         </MapContainer>
-
-        <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-black/[0.03]" />
-
-        <div className="absolute top-4 right-4 z-[40] flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
-          Live
-        </div>
-
-        <div className="absolute right-4 bottom-4 z-[40] flex items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-3 w-3"
-          >
-            <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          {detectedCoords
-            ? `${detectedCoords.lat.toFixed(4)}, ${detectedCoords.lng.toFixed(4)}`
-            : 'Sarpang, Bhutan'}
-        </div>
-
-        <div className="absolute bottom-4 left-4 z-[40] flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#d97706]" />
-            <span>Road</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb]" />
-            <span>Waste</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#ca8a04]" />
-            <span>Lighting</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#0891b2]" />
-            <span>Drainage</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#154212]" />
-            <span>Other</span>
-          </div>
-        </div>
       </div>
     </div>
   );

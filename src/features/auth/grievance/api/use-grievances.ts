@@ -17,6 +17,7 @@ interface GrievanceRow {
   image_url: string;
   resolved_image_url?: string;
   created_at: string;
+  resolved_at?: string;
 }
 
 export const useGrievances = () => {
@@ -29,7 +30,17 @@ export const useGrievances = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+
+      // Auto-hide resolved/closed grievances resolved more than 1 week ago
+      // to avoid overcrowding on the user map. Admin panel still shows everything.
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+      return (data || []).filter((g) => {
+        if (g.status !== 'resolved' && g.status !== 'closed') return true;
+        if (!g.resolved_at) return true;
+        return new Date(g.resolved_at) >= oneWeekAgo;
+      });
     },
   });
 };

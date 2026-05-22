@@ -1,77 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Clock,
   CheckCircle2,
   MapPin,
-  Pencil,
-  X,
-  Check,
   Loader2,
+  Trophy,
+  Download,
+  FileSpreadsheet,
+  FileDown,
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { supabase } from '@/lib/supabase.ts'; // Adjust path based on your project configuration
-import type {
-  Complaint,
-  ComplaintCategory,
-  ComplaintUrgency,
-  ComplaintStatus,
-} from '@/features/complaint/types';
+import * as XLSX from 'xlsx';
+import { supabase } from '@/lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
+import { grievanceKeys } from '@/features/auth/grievance/api/use-grievances';
+import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
+import { ImageLightbox } from '@/features/auth/grievance/components/image-lightbox';
+import {
+  URGENCY_BADGE,
+  STATUS_BADGE,
+  CATEGORY_LABELS,
+  CATEGORY_COLORS,
+  STATUS_LABELS,
+  URGENCY_LABELS,
+} from '@/features/complaint/constants';
+import type { Complaint, ComplaintUrgency, ComplaintStatus } from '@/features/complaint/types';
+import { awardPointsForStatus } from '@/features/complaint/utils/award-points';
 
-const URGENCY_ORDER: Record<ComplaintUrgency, number> = {
-  critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-};
-
-const URGENCY_BADGE: Record<ComplaintUrgency, { bg: string; text: string }> = {
-  critical: { bg: '#fef2f2', text: '#dc2626' },
-  high: { bg: '#fff7ed', text: '#ea580c' },
-  medium: { bg: '#eff6ff', text: '#2563eb' },
-  low: { bg: '#f0fdf4', text: '#16a34a' },
-};
-
-const STATUS_BADGE: Record<ComplaintStatus, { bg: string; text: string }> = {
-  pending: { bg: '#fff7ed', text: '#ea580c' },
-  'in-progress': { bg: '#eff6ff', text: '#2563eb' },
-  resolved: { bg: '#f0fdf4', text: '#16a34a' },
-};
-
-const CATEGORY_LABELS: Record<ComplaintCategory, string> = {
-  road: 'Road',
-  garbage: 'Garbage',
-  lighting: 'Lighting',
-  drainage: 'Drainage',
-  other: 'Other',
-};
-
-const CATEGORY_COLORS: Record<ComplaintCategory, string> = {
-  road: '#d97706',
-  garbage: '#3b82f6',
-  lighting: '#eab308',
-  drainage: '#06b6d4',
-  other: '#6b7280',
-};
-
-const STATUS_LABELS: Record<ComplaintStatus, string> = {
-  pending: 'Pending',
-  'in-progress': 'In Progress',
-  resolved: 'Resolved',
-};
-
-const URGENCY_LABELS: Record<ComplaintUrgency, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
+const getEarnedPoints = (bonusAwarded: number) => {
+  let points = 1;
+  if (bonusAwarded & 1) points += 1;
+  if (bonusAwarded & 2) points += 2;
+  return points;
 };
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
 
-// --- Pagination Subcomponent ---
+type ActiveTab = 'total' | ComplaintStatus | 'critical';
+
 function Pagination({
   currentPage,
   totalPages,
@@ -158,28 +127,33 @@ function Pagination({
   );
 }
 
-// --- Main Component ---
 export const ComplaintMonitor = () => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [statusFilter, setStatusFilter] = useState<ComplaintStatus | 'all'>('all');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('total');
   const [urgencyFilter, setUrgencyFilter] = useState<ComplaintUrgency | 'all'>('all');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const queryClient = useQueryClient();
 
   const fetchGrievances = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: supabaseError } = await supabase.from('grievances').select('*');
+      const { data, error: supabaseError } = await supabase
+        .from('grievances')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (supabaseError) throw supabaseError;
 
       setComplaints(data || []);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'An error occurred while loading complaints.');
     } finally {
@@ -192,41 +166,75 @@ export const ComplaintMonitor = () => {
     fetchGrievances();
   }, []);
 
-  const handleUpdate = async (id: string, updatedComplaint: Complaint) => {
-    try {
-      setError(null);
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
+  const handleStatusChange = async (id: string, newStatus: ComplaintStatus) => {
+    const current = complaints.find((c) => c.id === id);
+    if (!current || current.status === newStatus) return;
+
+    const updates: Record<string, unknown> = { status: newStatus };
+    if (newStatus === 'resolved') {
+      updates.resolved_at = new Date().toISOString();
+    }
+
+    setComplaints((prev) =>
+      prev.map((c) => (c.id === id ? ({ ...c, ...updates } as Complaint) : c)),
+    );
+
+    try {
       const { error: supabaseError } = await supabase
         .from('grievances')
-        .update({
-          title: updatedComplaint.title,
-          description: updatedComplaint.description,
-          category: updatedComplaint.category,
-          urgency: updatedComplaint.urgency,
-          status: updatedComplaint.status,
-          reporter: updatedComplaint.reporter,
-          reported_at: updatedComplaint.reportedAt,
-        })
+        .update(updates)
         .eq('id', id);
 
       if (supabaseError) throw supabaseError;
 
-      setComplaints((prev) => prev.map((c) => (c.id === id ? updatedComplaint : c)));
-      setEditingId(null);
-    } catch (err) {
-      console.error('Error updating resource:', err);
-      alert(`Failed to save changes: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      await awardPointsForStatus(current.reporter_id, id, current.status, newStatus);
+      queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
+      queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
+    } catch (err: unknown) {
+      fetchGrievances();
+      alert(`Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
-  const handleLocalChange = (id: string, updates: Partial<Complaint>) => {
-    setComplaints((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
+  const handleUrgencyChange = async (id: string, newUrgency: ComplaintUrgency) => {
+    const current = complaints.find((c) => c.id === id);
+    if (!current || current.urgency === newUrgency) return;
+
+    setComplaints((prev) => prev.map((c) => (c.id === id ? { ...c, urgency: newUrgency } : c)));
+
+    try {
+      const { error: supabaseError } = await supabase
+        .from('grievances')
+        .update({ urgency: newUrgency })
+        .eq('id', id);
+
+      if (supabaseError) throw supabaseError;
+
+      queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
+    } catch (err: unknown) {
+      fetchGrievances();
+      alert(`Failed to update urgency: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   };
 
   const filtered = complaints
-    .filter((c) => statusFilter === 'all' || c.status === statusFilter)
-    .filter((c) => urgencyFilter === 'all' || c.urgency === urgencyFilter)
-    .sort((a, b) => URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency]);
+    .filter((c): c is NonNullable<typeof c> => c != null)
+    .filter((c) => {
+      if (activeTab === 'total') return true;
+      if (activeTab === 'critical') return c.urgency === 'critical';
+      return c.status === activeTab;
+    })
+    .filter((c) => urgencyFilter === 'all' || c.urgency === urgencyFilter);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -239,22 +247,157 @@ export const ComplaintMonitor = () => {
     critical: complaints.filter((c) => c.urgency === 'critical').length,
   };
 
+  const handleTabClick = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  const buildExportData = useCallback(() => {
+    const headers = [
+      'Title',
+      'Description',
+      'Category',
+      'Urgency',
+      'Status',
+      'Points',
+      'Location',
+      'Image URL',
+      'Date Created',
+    ];
+    const rows = complaints.map((c) => ({
+      Title: c.title,
+      Description: c.description,
+      Category: CATEGORY_LABELS[c.category] || c.category,
+      Urgency: URGENCY_LABELS[c.urgency] || c.urgency,
+      Status: STATUS_LABELS[c.status] || c.status,
+      Points: getEarnedPoints(c.bonus_awarded ?? 0),
+      Location: c.location || '',
+      'Image URL': c.image_url || '',
+      'Date Created': c.created_at?.split('T')[0] || '',
+    }));
+    return { headers, rows };
+  }, [complaints]);
+
+  const downloadCSV = useCallback(() => {
+    const { headers, rows } = buildExportData();
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((r) =>
+        headers.map((h) => `"${String(r[h as keyof typeof r]).replace(/"/g, '""')}"`).join(','),
+      ),
+    ].join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `complaint-report-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setDropdownOpen(false);
+  }, [buildExportData]);
+
+  const downloadExcel = useCallback(() => {
+    const { rows } = buildExportData();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Complaints');
+    XLSX.writeFile(wb, `complaint-report-${new Date().toISOString().split('T')[0]}.xlsx`);
+    setDropdownOpen(false);
+  }, [buildExportData]);
+
+  const tabCard = (
+    tab: ActiveTab,
+    label: string,
+    count: number,
+    bgColor: string,
+    borderColor: string,
+    icon: React.ReactNode,
+    textColor: string,
+  ) => {
+    const isActive = activeTab === tab;
+    return (
+      <button
+        type="button"
+        onClick={() => handleTabClick(tab)}
+        className={`rounded-xl border p-4 text-left shadow-sm transition-all hover:scale-[1.02] ${
+          isActive ? 'ring-2 ring-offset-1' : ''
+        }`}
+        style={{
+          backgroundColor: bgColor,
+          borderColor: isActive ? '#154212' : borderColor,
+        }}
+      >
+        <div className="flex items-center gap-1.5">
+          {icon}
+          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: textColor }}>
+            {label}
+          </p>
+        </div>
+        <p className="mt-1 text-3xl font-bold" style={{ color: textColor }}>
+          {count}
+        </p>
+      </button>
+    );
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div
-          className="flex h-10 w-10 items-center justify-center rounded-lg"
-          style={{ backgroundColor: '#154212' }}
-        >
-          <AlertTriangle className="h-5 w-5 text-white" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg"
+            style={{ backgroundColor: '#154212' }}
+          >
+            <AlertTriangle className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold tracking-tight" style={{ color: '#1c1b1b' }}>
+              Complaint Monitoring
+            </h2>
+            <p className="text-xs" style={{ color: '#72796e' }}>
+              {complaints.length} total complaint{complaints.length !== 1 ? 's' : ''}
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-bold tracking-tight" style={{ color: '#1c1b1b' }}>
-            Complaint Monitoring
-          </h2>
-          <p className="text-xs" style={{ color: '#72796e' }}>
-            {complaints.length} total complaints
-          </p>
+        <div className="relative self-start" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all hover:scale-105"
+            style={{ backgroundColor: '#154212', color: '#ffffff' }}
+          >
+            <Download className="h-4 w-4" />
+            Download Report
+            <ChevronDown className="h-3 w-3" />
+          </button>
+          {dropdownOpen && (
+            <div
+              className="absolute right-0 z-50 mt-1 w-48 overflow-hidden rounded-xl border shadow-lg"
+              style={{ backgroundColor: '#ffffff', borderColor: '#e5e2e1' }}
+            >
+              <button
+                type="button"
+                onClick={downloadExcel}
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-semibold transition-all hover:bg-gray-50"
+                style={{ color: '#42493e' }}
+              >
+                <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                Download as Excel (.xlsx)
+              </button>
+              <div className="border-t" style={{ borderColor: '#e5e2e1' }} />
+              <button
+                type="button"
+                onClick={downloadCSV}
+                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-semibold transition-all hover:bg-gray-50"
+                style={{ color: '#42493e' }}
+              >
+                <FileDown className="h-4 w-4 text-blue-600" />
+                Download as CSV (.csv)
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -264,84 +407,49 @@ export const ComplaintMonitor = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-3">
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#ffffff', borderColor: '#e5e2e1' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>
-            Total
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#1c1b1b' }}>
-            {summary.total}
-          </p>
-        </div>
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#fff7ed', borderColor: '#fed7aa' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#ea580c' }}>
-            Pending
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#ea580c' }}>
-            {summary.pending}
-          </p>
-        </div>
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#2563eb' }}>
-            In Progress
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#2563eb' }}>
-            {summary.inProgress}
-          </p>
-        </div>
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#16a34a' }}>
-            Resolved
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#16a34a' }}>
-            {summary.resolved}
-          </p>
-        </div>
-        <div
-          className="rounded-xl border p-4 text-center shadow-sm"
-          style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}
-        >
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: '#dc2626' }}>
-            Critical
-          </p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#dc2626' }}>
-            {summary.critical}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {tabCard('total', 'Total', summary.total, '#ffffff', '#e5e2e1', null, '#1c1b1b')}
+        {tabCard(
+          'pending',
+          'Pending',
+          summary.pending,
+          '#fffbeb',
+          '#fde68a',
+          <Clock className="h-4 w-4 text-orange-500" />,
+          '#d97706',
+        )}
+        {tabCard(
+          'in-progress',
+          'In Progress',
+          summary.inProgress,
+          '#eff6ff',
+          '#93c5fd',
+          <MapPin className="h-4 w-4 text-blue-500" />,
+          '#2563eb',
+        )}
+        {tabCard(
+          'resolved',
+          'Resolved',
+          summary.resolved,
+          '#f0fdf4',
+          '#86efac',
+          <CheckCircle2 className="h-4 w-4 text-green-500" />,
+          '#16a34a',
+        )}
+        {tabCard(
+          'critical',
+          'Critical',
+          summary.critical,
+          summary.critical > 0 ? '#fef2f2' : '#f9fafb',
+          summary.critical > 0 ? '#fca5a5' : '#e5e2e1',
+          <AlertTriangle
+            className={`h-4 w-4 ${summary.critical > 0 ? 'text-red-500' : 'text-gray-400'}`}
+          />,
+          summary.critical > 0 ? '#dc2626' : '#72796e',
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>
-            Status:
-          </span>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as ComplaintStatus | 'all');
-              setCurrentPage(1);
-            }}
-            className="rounded-lg border px-3 py-1.5 text-xs transition-all outline-none"
-            style={{ borderColor: '#c2c9bb', color: '#42493e' }}
-          >
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-          </select>
-        </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>
             Urgency:
@@ -362,10 +470,10 @@ export const ComplaintMonitor = () => {
             <option value="low">Low</option>
           </select>
         </div>
-        {statusFilter !== 'all' || urgencyFilter !== 'all' ? (
+        {activeTab !== 'total' || urgencyFilter !== 'all' ? (
           <button
             onClick={() => {
-              setStatusFilter('all');
+              setActiveTab('total');
               setUrgencyFilter('all');
               setCurrentPage(1);
             }}
@@ -417,26 +525,20 @@ export const ComplaintMonitor = () => {
                   className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
                   style={{ color: '#72796e' }}
                 >
-                  Reporter
+                  Points
                 </th>
                 <th
                   className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
                   style={{ color: '#72796e' }}
                 >
-                  Date
-                </th>
-                <th
-                  className="w-20 px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
-                  style={{ color: '#72796e' }}
-                >
-                  Actions
+                  Image
                 </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
+                  <td colSpan={6} className="px-4 py-16 text-center">
                     <div
                       className="flex flex-col items-center justify-center gap-2"
                       style={{ color: '#72796e' }}
@@ -449,7 +551,7 @@ export const ComplaintMonitor = () => {
               ) : paginated.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={6}
                     className="px-4 py-16 text-center text-sm"
                     style={{ color: '#c2c9bb' }}
                   >
@@ -463,211 +565,101 @@ export const ComplaintMonitor = () => {
                     className="group border-b transition-all last:border-0"
                     style={{ borderColor: '#f0eded' }}
                   >
-                    {editingId === complaint.id ? (
-                      <>
-                        <td className="px-4 py-2">
-                          <div className="space-y-1">
-                            <Input
-                              value={complaint.title}
-                              onChange={(e) =>
-                                handleLocalChange(complaint.id, { title: e.target.value })
-                              }
-                              className="h-8 text-sm"
-                              style={{ borderColor: '#c2c9bb' }}
-                            />
-                            <Input
-                              value={complaint.description}
-                              onChange={(e) =>
-                                handleLocalChange(complaint.id, { description: e.target.value })
-                              }
-                              className="h-8 text-xs"
-                              style={{ borderColor: '#c2c9bb' }}
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2">
-                          <select
-                            value={complaint.category}
-                            onChange={(e) =>
-                              handleLocalChange(complaint.id, {
-                                category: e.target.value as ComplaintCategory,
-                              })
-                            }
-                            className="h-8 rounded-lg border px-2 text-xs outline-none"
-                            style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
+                    <td className="px-4 py-3">
+                      <div className="max-w-[220px]">
+                        <p className="truncate font-medium" style={{ color: '#1c1b1b' }}>
+                          {complaint.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs" style={{ color: '#72796e' }}>
+                          {complaint.description}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm"
+                          style={{
+                            backgroundColor: CATEGORY_COLORS[complaint.category] || '#6b7280',
+                          }}
+                        />
+                        <span className="text-xs font-medium" style={{ color: '#42493e' }}>
+                          {CATEGORY_LABELS[complaint.category] || complaint.category}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={complaint.urgency}
+                        onChange={(e) =>
+                          handleUrgencyChange(complaint.id, e.target.value as ComplaintUrgency)
+                        }
+                        className="cursor-pointer rounded-lg border px-2 py-1 text-xs font-bold tracking-wide uppercase transition-all outline-none"
+                        style={{
+                          backgroundColor: URGENCY_BADGE[complaint.urgency]?.bg || '#f3f4f6',
+                          color: URGENCY_BADGE[complaint.urgency]?.text || '#1f2937',
+                          borderColor: URGENCY_BADGE[complaint.urgency]?.text || '#c2c9bb',
+                        }}
+                      >
+                        {Object.entries(URGENCY_LABELS).map(([key, label]) => (
+                          <option
+                            key={key}
+                            value={key}
+                            style={{ backgroundColor: '#fff', color: '#1c1b1b' }}
                           >
-                            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                              <option key={key} value={key}>
-                                {label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-2">
-                          <select
-                            value={complaint.urgency}
-                            onChange={(e) =>
-                              handleLocalChange(complaint.id, {
-                                urgency: e.target.value as ComplaintUrgency,
-                              })
-                            }
-                            className="h-8 rounded-lg border px-2 text-xs outline-none"
-                            style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={complaint.status}
+                        onChange={(e) =>
+                          handleStatusChange(complaint.id, e.target.value as ComplaintStatus)
+                        }
+                        className="cursor-pointer rounded-lg border px-2 py-1 text-xs font-bold tracking-wide uppercase transition-all outline-none"
+                        style={{
+                          backgroundColor: STATUS_BADGE[complaint.status]?.bg || '#f3f4f6',
+                          color: STATUS_BADGE[complaint.status]?.text || '#1f2937',
+                          borderColor: STATUS_BADGE[complaint.status]?.text || '#c2c9bb',
+                        }}
+                      >
+                        {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                          <option
+                            key={key}
+                            value={key}
+                            style={{ backgroundColor: '#fff', color: '#1c1b1b' }}
                           >
-                            {Object.entries(URGENCY_LABELS).map(([key, label]) => (
-                              <option key={key} value={key}>
-                                {label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-2">
-                          <select
-                            value={complaint.status}
-                            onChange={(e) =>
-                              handleLocalChange(complaint.id, {
-                                status: e.target.value as ComplaintStatus,
-                                resolvedAt:
-                                  e.target.value === 'resolved'
-                                    ? new Date().toISOString().split('T')[0]
-                                    : null,
-                              })
-                            }
-                            className="h-8 rounded-lg border px-2 text-xs outline-none"
-                            style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
-                          >
-                            {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                              <option key={key} value={key}>
-                                {label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-4 py-2">
-                          <Input
-                            value={complaint.reporter}
-                            onChange={(e) =>
-                              handleLocalChange(complaint.id, { reporter: e.target.value })
-                            }
-                            className="h-8 text-sm"
-                            style={{ borderColor: '#c2c9bb' }}
-                          />
-                        </td>
-                        <td className="px-4 py-2">
-                          <Input
-                            type="date"
-                            value={complaint.reportedAt}
-                            onChange={(e) =>
-                              handleLocalChange(complaint.id, { reportedAt: e.target.value })
-                            }
-                            className="h-8 text-xs"
-                            style={{ borderColor: '#c2c9bb' }}
-                          />
-                        </td>
-                        <td className="px-4 py-2">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleUpdate(complaint.id, complaint)}
-                              className="rounded-lg p-1.5 transition-all hover:scale-110"
-                              style={{ backgroundColor: '#154212', color: '#ffffff' }}
-                            >
-                              <Check className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingId(null);
-                                fetchGrievances();
-                              }}
-                              className="rounded-lg p-1.5 transition-all hover:scale-110"
-                              style={{ color: '#72796e' }}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-4 py-3">
-                          <div className="max-w-[220px]">
-                            <p className="truncate font-medium" style={{ color: '#1c1b1b' }}>
-                              {complaint.title}
-                            </p>
-                            <p className="mt-0.5 truncate text-xs" style={{ color: '#72796e' }}>
-                              {complaint.description}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm"
-                              style={{
-                                backgroundColor: CATEGORY_COLORS[complaint.category] || '#6b7280',
-                              }}
-                            />
-                            <span className="text-xs font-medium" style={{ color: '#42493e' }}>
-                              {CATEGORY_LABELS[complaint.category] || complaint.category}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="inline-block rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm"
-                            style={{
-                              backgroundColor: URGENCY_BADGE[complaint.urgency]?.bg || '#f3f4f6',
-                              color: URGENCY_BADGE[complaint.urgency]?.text || '#1f2937',
-                            }}
-                          >
-                            {URGENCY_LABELS[complaint.urgency] || complaint.urgency}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm"
-                            style={{
-                              backgroundColor: STATUS_BADGE[complaint.status]?.bg || '#f3f4f6',
-                              color: STATUS_BADGE[complaint.status]?.text || '#1f2937',
-                            }}
-                          >
-                            {complaint.status === 'pending' ? (
-                              <Clock className="h-3 w-3" />
-                            ) : complaint.status === 'resolved' ? (
-                              <CheckCircle2 className="h-3 w-3" />
-                            ) : (
-                              <MapPin className="h-3 w-3" />
-                            )}
-                            {STATUS_LABELS[complaint.status] || complaint.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: '#42493e' }}>
-                          {complaint.reporter}
-                        </td>
-                        <td
-                          className="px-4 py-3 text-xs whitespace-nowrap"
-                          style={{ color: '#72796e' }}
-                        >
-                          {complaint.reportedAt}
-                          {complaint.resolvedAt && (
-                            <span className="ml-1" style={{ color: '#16a34a' }}>
-                              ✓ {complaint.resolvedAt}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 opacity-0 transition-all duration-200 group-hover:opacity-100">
-                            <button
-                              onClick={() => setEditingId(complaint.id)}
-                              className="rounded-lg p-1.5 transition-all hover:scale-110"
-                              style={{ color: '#72796e' }}
-                              title="Edit"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    )}
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="text-sm font-bold" style={{ color: '#42493e' }}>
+                          {getEarnedPoints(complaint.bonus_awarded ?? 0)}
+                        </span>
+                        <span className="text-[10px]" style={{ color: '#72796e' }}>
+                          / 4
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {complaint.image_url ? (
+                        <ImageLightbox
+                          src={complaint.image_url}
+                          alt={complaint.title}
+                          className="h-14 w-28 rounded-lg object-cover shadow-sm"
+                        />
+                      ) : (
+                        <span className="text-xs" style={{ color: '#c2c9bb' }}>
+                          —
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

@@ -4,13 +4,13 @@ React 19 + Vite + TypeScript + TailwindCSS v4 + shadcn/ui + TanStack Query + Rea
 
 ## Commands
 
-| Command | What it does |
-|---------|-------------|
-| `npm run dev` | Vite dev server |
-| `npm run build` | `tsc -b && vite build` (typecheck before build) |
-| `npm run lint` | ESLint flat config on `.` |
-| `npm run format` | Prettier on `.` |
-| `npm test` | Placeholder — no tests exist yet |
+| Command          | What it does                                    |
+| ---------------- | ----------------------------------------------- |
+| `npm run dev`    | Vite dev server                                 |
+| `npm run build`  | `tsc -b && vite build` (typecheck before build) |
+| `npm run lint`   | ESLint flat config on `.`                       |
+| `npm run format` | Prettier on `.`                                 |
+| `npm test`       | Placeholder — no tests exist yet                |
 
 Pre-commit hook currently runs `npm test` (no-op). `lint-staged` is configured but not wired into the hook.
 

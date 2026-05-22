@@ -1,53 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Plus,
   Trash2,
-  Package,
   ChevronLeft,
   ChevronRight,
   Pencil,
   X,
-  Check,
   GripVertical,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/lib/supabase'; // <-- Ensure this path matches your Supabase client setup
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import { useWasteRecords } from '@/features/waste/api/use-waste-records';
+import { useCreateWasteRecord } from '@/features/waste/api/use-create-waste-record';
+import { useUpdateWasteRecord } from '@/features/waste/api/use-update-waste-record';
+import { useDeleteWasteRecord } from '@/features/waste/api/use-delete-waste-record';
+import { CATEGORIES, CATEGORY_LABELS } from '@/features/waste/constants';
 import type { WasteRecord as WasteRecordType, WasteCategory } from '@/features/waste/types';
-
-const CATEGORIES: { value: WasteCategory; label: string; color: string }[] = [
-  { value: 'organic-food', label: 'Organic/Food waste', color: '#16a34a' },
-  { value: 'paper-cardboard', label: 'Paper & Cardboard', color: '#2563eb' },
-  { value: 'plastic-soft-packaging', label: 'Plastic soft packaging', color: '#eab308' },
-  { value: 'plastic-pet-hdpe', label: 'Plastic (PET&HDPE)', color: '#f97316' },
-  { value: 'textile', label: 'Textile', color: '#ec4899' },
-  { value: 'glass', label: 'Glass', color: '#06b6d4' },
-  { value: 'metal-aluminum', label: 'Metal, Aluminum', color: '#8b5cf6' },
-  { value: 'e-waste', label: 'E-waste', color: '#ef4444' },
-  { value: 'infectious-waste', label: 'Infectious waste', color: '#dc2626' },
-  { value: 'leather-rubber', label: 'Leather, Rubber', color: '#78716c' },
-  { value: 'wood', label: 'Wood', color: '#d97706' },
-  { value: 'sanitary-waste', label: 'Sanitary waste', color: '#a1a1aa' },
-  { value: 'green-plant-materials', label: 'Green plant materials', color: '#22c55e' },
-  { value: 'construction-demolition', label: 'Construction & Demolition wastes', color: '#92400e' },
-];
-
-const CATEGORY_LABELS: Record<WasteCategory, string> = {
-  'organic-food': 'Organic/Food waste',
-  'paper-cardboard': 'Paper & Cardboard',
-  'plastic-soft-packaging': 'Plastic soft packaging',
-  'plastic-pet-hdpe': 'Plastic (PET&HDPE)',
-  textile: 'Textile',
-  glass: 'Glass',
-  'metal-aluminum': 'Metal, Aluminum',
-  'e-waste': 'E-waste',
-  'infectious-waste': 'Infectious waste',
-  'leather-rubber': 'Leather, Rubber',
-  wood: 'Wood',
-  'sanitary-waste': 'Sanitary waste',
-  'green-plant-materials': 'Green plant materials',
-  'construction-demolition': 'Construction & Demolition wastes',
-};
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
 
@@ -70,19 +41,13 @@ function Pagination({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div
-      className="flex items-center justify-between border-t px-2 pt-4"
-      style={{ borderColor: '#e5e2e1' }}
-    >
+    <div className="flex items-center justify-between border-t pt-4">
       <div className="flex items-center gap-2">
-        <span className="text-xs" style={{ color: '#72796e' }}>
-          Rows per page:
-        </span>
+        <span className="text-muted-foreground/60 text-xs">Rows per page:</span>
         <select
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="rounded-lg border px-2 py-1 text-xs transition-all outline-none"
-          style={{ borderColor: '#c2c9bb', color: '#42493e' }}
+          className="border-input bg-card text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/30 h-7 rounded-lg border px-2 text-xs transition-all outline-none focus-visible:ring-2"
         >
           {ITEMS_PER_PAGE_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
@@ -90,7 +55,7 @@ function Pagination({
             </option>
           ))}
         </select>
-        <span className="text-xs" style={{ color: '#72796e' }}>
+        <span className="text-muted-foreground/60 text-xs">
           {startItem}–{endItem} of {totalItems}
         </span>
       </div>
@@ -98,8 +63,7 @@ function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="rounded-lg p-1.5 transition-all hover:scale-110 disabled:opacity-30"
-          style={{ color: '#72796e' }}
+          className="text-muted-foreground/60 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all disabled:opacity-30"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -108,17 +72,16 @@ function Pagination({
           .map((p, idx, arr) => (
             <span key={p} className="flex items-center">
               {idx > 0 && arr[idx - 1] !== p - 1 ? (
-                <span className="px-1 text-xs" style={{ color: '#c2c9bb' }}>
-                  ...
-                </span>
+                <span className="text-muted-foreground/40 px-1 text-xs">...</span>
               ) : null}
               <button
                 onClick={() => onPageChange(p)}
-                className="min-w-[28px] rounded-lg px-2 py-1 text-xs font-semibold transition-all"
-                style={{
-                  backgroundColor: p === currentPage ? '#154212' : 'transparent',
-                  color: p === currentPage ? '#ffffff' : '#42493e',
-                }}
+                className={cn(
+                  'min-w-[28px] rounded-lg px-2 py-1 text-xs font-semibold transition-all',
+                  p === currentPage
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                )}
               >
                 {p}
               </button>
@@ -127,8 +90,7 @@ function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="rounded-lg p-1.5 transition-all hover:scale-110 disabled:opacity-30"
-          style={{ color: '#72796e' }}
+          className="text-muted-foreground/60 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all disabled:opacity-30"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -138,8 +100,11 @@ function Pagination({
 }
 
 export const WasteRecord = () => {
-  const [records, setRecords] = useState<WasteRecordType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: records = [], isLoading } = useWasteRecords();
+  const createRecord = useCreateWasteRecord();
+  const updateRecord = useUpdateWasteRecord();
+  const deleteRecord = useDeleteWasteRecord();
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -151,40 +116,6 @@ export const WasteRecord = () => {
     unit: 'ton',
     notes: '',
   });
-
-  const fetchRecords = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('waste_records')
-        .select('*')
-        .order('reported_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Mapping database snake_case properties to frontend camelCase objects
-      const mappedData: WasteRecordType[] = (data || []).map((row) => ({
-        id: row.id as string,
-        category: row.category as WasteCategory,
-        quantity: Number(row.quantity),
-        unit: row.unit as string,
-        reportedAt: row.reported_at as string,
-        collectedAt: row.collected_at as string | null,
-        notes: row.notes as string | null,
-      }));
-
-      setRecords(mappedData);
-    } catch (err) {
-      console.error('Error fetching data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchRecords();
-  }, []);
 
   const resetForm = () =>
     setForm({ category: 'organic-food', quantity: '', unit: 'ton', notes: '' });
@@ -199,100 +130,42 @@ export const WasteRecord = () => {
     e.preventDefault();
     if (!form.quantity) return;
 
-    try {
-      const payload = {
+    createRecord.mutate(
+      {
         category: form.category,
         quantity: Number(form.quantity),
         unit: form.unit,
-        reported_at: new Date().toISOString().split('T')[0],
-        collected_at: null,
         notes: form.notes,
-      };
-
-      const { data, error } = await supabase.from('waste_records').insert([payload]).select();
-
-      if (error) throw error;
-
-      if (data && data[0]) {
-        const inserted = data[0];
-        const newRecord: WasteRecordType = {
-          id: inserted.id,
-          category: inserted.category,
-          quantity: Number(inserted.quantity),
-          unit: inserted.unit,
-          reportedAt: inserted.reported_at,
-          collectedAt: inserted.collected_at,
-          notes: inserted.notes,
-        };
-        setRecords((prev) => [newRecord, ...prev]);
-      }
-
-      resetForm();
-      setShowForm(false);
-      setCurrentPage(1);
-    } catch (err) {
-      console.error('Error adding record:', err);
-    }
+      },
+      {
+        onSuccess: () => {
+          resetForm();
+          setShowForm(false);
+          setCurrentPage(1);
+        },
+      },
+    );
   };
 
-  const handleUpdate = async (id: string, updatedFields: Partial<WasteRecordType>) => {
-    try {
-      const dbPayload: Record<string, unknown> = {};
-      if (updatedFields.category) dbPayload.category = updatedFields.category;
-      if (updatedFields.quantity !== undefined) dbPayload.quantity = Number(updatedFields.quantity);
-      if (updatedFields.unit) dbPayload.unit = updatedFields.unit;
-      if (updatedFields.reportedAt) dbPayload.reported_at = updatedFields.reportedAt;
-      if (updatedFields.notes !== undefined) dbPayload.notes = updatedFields.notes;
-
-      const { error } = await supabase.from('waste_records').update(dbPayload).eq('id', id);
-
-      if (error) throw error;
-
-      setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r)));
-      setEditingId(null);
-    } catch (err) {
-      console.error('Error updating record:', err);
-    }
+  const handleUpdate = (record: WasteRecordType) => {
+    updateRecord.mutate(record, {
+      onSuccess: () => setEditingId(null),
+    });
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      const { error } = await supabase.from('waste_records').delete().eq('id', id);
-
-      if (error) throw error;
-      setRecords((prev) => prev.filter((r) => r.id !== id));
-    } catch (err) {
-      console.error('Error deleting record:', err);
-    }
+  const handleDelete = (id: string) => {
+    deleteRecord.mutate(id);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-lg"
-            style={{ backgroundColor: '#154212' }}
-          >
-            <Package className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold tracking-tight" style={{ color: '#1c1b1b' }}>
-              Waste Records
-            </h2>
-            <p className="text-xs" style={{ color: '#72796e' }}>
-              {loading ? 'Loading...' : `${records.length} total records`}
-            </p>
-          </div>
-        </div>
+    <div className="animate-fade-in space-y-6">
+      <div className="flex items-center justify-end">
         <Button
           onClick={() => {
             setShowForm(!showForm);
             setEditingId(null);
           }}
           size="sm"
-          className="transition-all duration-300 hover:scale-105"
-          style={{ backgroundColor: '#154212', color: '#ffffff' }}
         >
           <Plus className="mr-1 h-4 w-4" />
           {showForm ? 'Cancel' : 'Add Record'}
@@ -302,31 +175,23 @@ export const WasteRecord = () => {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="animate-slide-down rounded-xl border p-6 shadow-sm"
-          style={{ backgroundColor: '#ffffff', borderColor: '#e5e2e1' }}
+          className="animate-slide-down bg-card shadow-card rounded-xl border p-6"
         >
           <div className="mb-5 flex items-center gap-2">
-            <GripVertical className="h-4 w-4" style={{ color: '#c2c9bb' }} />
-            <span
-              className="text-sm font-bold tracking-wide uppercase"
-              style={{ color: '#42493e' }}
-            >
+            <GripVertical className="text-muted-foreground/40 h-4 w-4" />
+            <span className="text-muted-foreground text-sm font-bold tracking-wide uppercase">
               New Waste Record
             </span>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1.5">
-              <label
-                className="text-xs font-bold tracking-wide uppercase"
-                style={{ color: '#42493e' }}
-              >
+              <label className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
                 Category
               </label>
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value as WasteCategory })}
-                className="flex h-10 w-full items-center rounded-lg border px-3 text-sm transition-all outline-none"
-                style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
+                className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/30 flex h-10 w-full items-center rounded-lg border px-3 text-sm transition-all outline-none focus-visible:ring-2"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -337,10 +202,7 @@ export const WasteRecord = () => {
             </div>
             <div className="flex gap-2">
               <div className="flex-1 space-y-1.5">
-                <label
-                  className="text-xs font-bold tracking-wide uppercase"
-                  style={{ color: '#42493e' }}
-                >
+                <label className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
                   Quantity
                 </label>
                 <Input
@@ -351,22 +213,16 @@ export const WasteRecord = () => {
                   onChange={(e) => setForm({ ...form, quantity: e.target.value })}
                   placeholder="0.0"
                   required
-                  className="focus-visible:ring-2"
-                  style={{ borderColor: '#c2c9bb' }}
                 />
               </div>
               <div className="w-24 space-y-1.5">
-                <label
-                  className="text-xs font-bold tracking-wide uppercase"
-                  style={{ color: '#42493e' }}
-                >
+                <label className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
                   Unit
                 </label>
                 <select
                   value={form.unit}
                   onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  className="flex h-10 w-full items-center rounded-lg border px-2 text-sm transition-all outline-none"
-                  style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
+                  className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/30 flex h-10 w-full items-center rounded-lg border px-2 text-sm transition-all outline-none focus-visible:ring-2"
                 >
                   <option value="kg">kg</option>
                   <option value="ton">ton</option>
@@ -376,18 +232,14 @@ export const WasteRecord = () => {
               </div>
             </div>
             <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
-              <label
-                className="text-xs font-bold tracking-wide uppercase"
-                style={{ color: '#42493e' }}
-              >
+              <label className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
                 Notes
               </label>
               <textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 placeholder="Additional details..."
-                className="min-h-[80px] w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none placeholder:text-sm"
-                style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
+                className="border-input bg-card text-foreground placeholder:text-muted-foreground/40 focus-visible:border-ring focus-visible:ring-ring/30 min-h-[80px] w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none focus-visible:ring-2"
               />
             </div>
           </div>
@@ -403,11 +255,7 @@ export const WasteRecord = () => {
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              size="sm"
-              style={{ backgroundColor: '#154212', color: '#ffffff' }}
-            >
+            <Button type="submit" size="sm">
               <Plus className="mr-1 h-4 w-4" />
               Add Record
             </Button>
@@ -415,67 +263,43 @@ export const WasteRecord = () => {
         </form>
       )}
 
-      <div
-        className="overflow-hidden rounded-xl border shadow-sm"
-        style={{
-          backgroundColor: '#ffffff',
-          borderColor: '#e5e2e1',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
-        }}
-      >
+      <Card className="shadow-card overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b" style={{ borderColor: '#e5e2e1' }}>
-                <th
-                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
-                  style={{ color: '#72796e' }}
-                >
+              <tr className="border-border/50 border-b">
+                <th className="text-muted-foreground/60 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
                   Category
                 </th>
-                <th
-                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
-                  style={{ color: '#72796e' }}
-                >
+                <th className="text-muted-foreground/60 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
                   Quantity
                 </th>
-                <th
-                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
-                  style={{ color: '#72796e' }}
-                >
+                <th className="text-muted-foreground/60 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
                   Date
                 </th>
-                <th
-                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
-                  style={{ color: '#72796e' }}
-                >
+                <th className="text-muted-foreground/60 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
                   Notes
                 </th>
-                <th
-                  className="w-24 px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
-                  style={{ color: '#72796e' }}
-                >
+                <th className="text-muted-foreground/60 w-24 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {isLoading ? (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="px-4 py-16 text-center text-sm"
-                    style={{ color: '#72796e' }}
-                  >
-                    Fetching records from database...
+                  <td colSpan={5} className="px-4 py-16 text-center">
+                    <div className="text-muted-foreground/60 flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="text-xs">Loading records...</span>
+                    </div>
                   </td>
                 </tr>
               ) : paginatedRecords.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-16 text-center text-sm"
-                    style={{ color: '#c2c9bb' }}
+                    className="text-muted-foreground/40 px-4 py-16 text-center text-sm"
                   >
                     No waste records found
                   </td>
@@ -484,25 +308,22 @@ export const WasteRecord = () => {
                 paginatedRecords.map((record) => (
                   <tr
                     key={record.id}
-                    className="group border-b transition-all last:border-0"
-                    style={{ borderColor: '#f0eded' }}
+                    className="group border-accent/50 hover:bg-muted/50 border-b transition-colors last:border-0"
                   >
                     {editingId === record.id ? (
                       <>
                         <td className="px-4 py-2">
                           <select
                             value={record.category}
-                            onChange={(e) =>
-                              setRecords((prev) =>
-                                prev.map((r) =>
-                                  r.id === record.id
-                                    ? { ...r, category: e.target.value as WasteCategory }
-                                    : r,
-                                ),
-                              )
-                            }
-                            className="h-8 w-full rounded-lg border px-2 text-xs outline-none"
-                            style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
+                            onChange={(e) => {
+                              const updated = {
+                                ...record,
+                                category: e.target.value as WasteCategory,
+                              };
+                              setEditingId(null);
+                              handleUpdate(updated);
+                            }}
+                            className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/30 h-8 w-full rounded-lg border px-2 text-xs outline-none focus-visible:ring-2"
                           >
                             {CATEGORIES.map((c) => (
                               <option key={c.value} value={c.value}>
@@ -516,30 +337,22 @@ export const WasteRecord = () => {
                             <Input
                               type="number"
                               step="0.1"
-                              value={record.quantity}
-                              onChange={(e) =>
-                                setRecords((prev) =>
-                                  prev.map((r) =>
-                                    r.id === record.id
-                                      ? { ...r, quantity: Number(e.target.value) }
-                                      : r,
-                                  ),
-                                )
-                              }
+                              defaultValue={record.quantity}
+                              onBlur={(e) => {
+                                const updated = { ...record, quantity: Number(e.target.value) };
+                                setEditingId(null);
+                                handleUpdate(updated);
+                              }}
                               className="h-8 w-20 text-sm"
-                              style={{ borderColor: '#c2c9bb' }}
                             />
                             <select
-                              value={record.unit}
-                              onChange={(e) =>
-                                setRecords((prev) =>
-                                  prev.map((r) =>
-                                    r.id === record.id ? { ...r, unit: e.target.value } : r,
-                                  ),
-                                )
-                              }
-                              className="h-8 rounded-lg border px-1 text-xs outline-none"
-                              style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
+                              defaultValue={record.unit}
+                              onChange={(e) => {
+                                const updated = { ...record, unit: e.target.value };
+                                setEditingId(null);
+                                handleUpdate(updated);
+                              }}
+                              className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/30 h-8 rounded-lg border px-1 text-xs outline-none focus-visible:ring-2"
                             >
                               <option value="kg">kg</option>
                               <option value="ton">ton</option>
@@ -551,45 +364,31 @@ export const WasteRecord = () => {
                         <td className="px-4 py-2">
                           <Input
                             type="date"
-                            value={record.reportedAt}
-                            onChange={(e) =>
-                              setRecords((prev) =>
-                                prev.map((r) =>
-                                  r.id === record.id ? { ...r, reportedAt: e.target.value } : r,
-                                ),
-                              )
-                            }
+                            defaultValue={record.reportedAt}
+                            onBlur={(e) => {
+                              const updated = { ...record, reportedAt: e.target.value };
+                              setEditingId(null);
+                              handleUpdate(updated);
+                            }}
                             className="h-8 text-xs"
-                            style={{ borderColor: '#c2c9bb' }}
                           />
                         </td>
                         <td className="px-4 py-2">
                           <Input
-                            value={record.notes || ''}
-                            onChange={(e) =>
-                              setRecords((prev) =>
-                                prev.map((r) =>
-                                  r.id === record.id ? { ...r, notes: e.target.value } : r,
-                                ),
-                              )
-                            }
+                            defaultValue={record.notes || ''}
+                            onBlur={(e) => {
+                              const updated = { ...record, notes: e.target.value };
+                              setEditingId(null);
+                              handleUpdate(updated);
+                            }}
                             className="h-8 text-sm"
-                            style={{ borderColor: '#c2c9bb' }}
                           />
                         </td>
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => handleUpdate(record.id, record)}
-                              className="rounded-lg p-1.5 transition-all hover:scale-110"
-                              style={{ backgroundColor: '#154212', color: '#ffffff' }}
-                            >
-                              <Check className="h-3.5 w-3.5" />
-                            </button>
-                            <button
                               onClick={() => setEditingId(null)}
-                              className="rounded-lg p-1.5 transition-all hover:scale-110"
-                              style={{ color: '#72796e' }}
+                              className="text-muted-foreground/60 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -599,10 +398,7 @@ export const WasteRecord = () => {
                     ) : (
                       <>
                         <td className="px-4 py-3">
-                          <span
-                            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium"
-                            style={{ borderColor: '#e5e2e1', color: '#42493e' }}
-                          >
+                          <span className="border-border/50 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium">
                             <span
                               className="h-2 w-2 rounded-full"
                               style={{
@@ -613,37 +409,30 @@ export const WasteRecord = () => {
                             {CATEGORY_LABELS[record.category]}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-medium" style={{ color: '#1c1b1b' }}>
+                        <td className="text-foreground px-4 py-3 font-medium">
                           {record.quantity} {record.unit}
                         </td>
-                        <td className="px-4 py-3 text-xs" style={{ color: '#72796e' }}>
+                        <td className="text-muted-foreground/70 px-4 py-3 text-xs">
                           <div>{record.reportedAt}</div>
                           {record.collectedAt && (
-                            <div className="mt-0.5" style={{ color: '#16a34a' }}>
-                              ✓ {record.collectedAt}
-                            </div>
+                            <div className="mt-0.5 text-green-600">✓ {record.collectedAt}</div>
                           )}
                         </td>
-                        <td
-                          className="max-w-[180px] truncate px-4 py-3 text-xs"
-                          style={{ color: '#72796e' }}
-                        >
+                        <td className="text-muted-foreground/70 max-w-[180px] truncate px-4 py-3 text-xs">
                           {record.notes}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1 opacity-0 transition-all duration-200 group-hover:opacity-100">
                             <button
                               onClick={() => setEditingId(record.id)}
-                              className="rounded-lg p-1.5 transition-all hover:scale-110"
-                              style={{ color: '#72796e' }}
+                              className="text-muted-foreground/60 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => handleDelete(record.id)}
-                              className="rounded-lg p-1.5 transition-all hover:scale-110"
-                              style={{ color: '#dc2626' }}
+                              className="text-destructive/70 hover:bg-destructive/10 hover:text-destructive rounded-lg p-1.5 transition-all"
                               title="Delete"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -672,7 +461,7 @@ export const WasteRecord = () => {
             }}
           />
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

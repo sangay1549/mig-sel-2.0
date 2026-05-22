@@ -16,4 +16,5 @@ export interface Grievance {
   image_url: string;
   resolved_image_url?: string;
   created_at: string;
+  resolved_at?: string;
 }
