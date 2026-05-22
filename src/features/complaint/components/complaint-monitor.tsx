@@ -202,7 +202,11 @@ export const ComplaintMonitor = () => {
       queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
     } catch (err: unknown) {
       fetchGrievances();
-      alert(`Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const message =
+        err instanceof Error
+          ? err.message
+          : ((err as { message?: string })?.message ?? 'Unknown error');
+      alert(`Failed to update status: ${message}`);
     }
   };
 
@@ -223,7 +227,11 @@ export const ComplaintMonitor = () => {
       queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
     } catch (err: unknown) {
       fetchGrievances();
-      alert(`Failed to update urgency: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const message =
+        err instanceof Error
+          ? err.message
+          : ((err as { message?: string })?.message ?? 'Unknown error');
+      alert(`Failed to update urgency: ${message}`);
     }
   };
 
@@ -315,18 +323,19 @@ export const ComplaintMonitor = () => {
     borderColor: string,
     icon: React.ReactNode,
     textColor: string,
+    ringColor: string,
   ) => {
     const isActive = activeTab === tab;
     return (
       <button
         type="button"
         onClick={() => handleTabClick(tab)}
-        className={`rounded-xl border p-4 text-left shadow-sm transition-all hover:scale-[1.02] ${
-          isActive ? 'ring-2 ring-offset-1' : ''
-        }`}
+        className="rounded-xl border p-4 text-left shadow-sm transition-all hover:scale-[1.02]"
         style={{
           backgroundColor: bgColor,
-          borderColor: isActive ? '#154212' : borderColor,
+          borderColor: isActive ? ringColor : borderColor,
+          outline: isActive ? `2px solid ${ringColor}` : undefined,
+          outlineOffset: '2px',
         }}
       >
         <div className="flex items-center gap-1.5">
@@ -352,14 +361,9 @@ export const ComplaintMonitor = () => {
           >
             <AlertTriangle className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold tracking-tight" style={{ color: '#1c1b1b' }}>
-              Complaint Monitoring
-            </h2>
-            <p className="text-xs" style={{ color: '#72796e' }}>
-              {complaints.length} total complaint{complaints.length !== 1 ? 's' : ''}
-            </p>
-          </div>
+          <h2 className="text-lg font-bold tracking-tight" style={{ color: '#1c1b1b' }}>
+            Complaint Monitoring
+          </h2>
         </div>
         <div className="relative self-start" ref={dropdownRef}>
           <button
@@ -408,7 +412,7 @@ export const ComplaintMonitor = () => {
       )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {tabCard('total', 'Total', summary.total, '#ffffff', '#e5e2e1', null, '#1c1b1b')}
+        {tabCard('total', 'Total', summary.total, '#ffffff', '#e5e2e1', null, '#1c1b1b', '#154212')}
         {tabCard(
           'pending',
           'Pending',
@@ -416,6 +420,7 @@ export const ComplaintMonitor = () => {
           '#fffbeb',
           '#fde68a',
           <Clock className="h-4 w-4 text-orange-500" />,
+          '#d97706',
           '#d97706',
         )}
         {tabCard(
@@ -426,6 +431,7 @@ export const ComplaintMonitor = () => {
           '#93c5fd',
           <MapPin className="h-4 w-4 text-blue-500" />,
           '#2563eb',
+          '#2563eb',
         )}
         {tabCard(
           'resolved',
@@ -434,6 +440,7 @@ export const ComplaintMonitor = () => {
           '#f0fdf4',
           '#86efac',
           <CheckCircle2 className="h-4 w-4 text-green-500" />,
+          '#16a34a',
           '#16a34a',
         )}
         {tabCard(
@@ -446,6 +453,7 @@ export const ComplaintMonitor = () => {
             className={`h-4 w-4 ${summary.critical > 0 ? 'text-red-500' : 'text-gray-400'}`}
           />,
           summary.critical > 0 ? '#dc2626' : '#72796e',
+          '#dc2626',
         )}
       </div>
 
