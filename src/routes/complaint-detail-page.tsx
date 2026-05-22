@@ -331,8 +331,8 @@ export const ComplaintDetailPage = () => {
                   </div>
                 </div>
                 {(() => {
-                  const bonus = complaint.bonus_awarded ?? 0;
-                  const hasInProgress = (bonus & 1) !== 0;
+                  const hasInProgress =
+                    complaint.status === 'in-progress' || complaint.status === 'resolved';
                   const hasResolved = complaint.status === 'resolved';
                   return (
                     <div className="grid grid-cols-3 gap-4">
@@ -399,8 +399,12 @@ export const ComplaintDetailPage = () => {
                 })()}
 
                 {(() => {
-                  const bonus = complaint.bonus_awarded ?? 0;
-                  const total = 1 + (bonus & 1 ? 1 : 0) + (bonus & 2 ? 2 : 0);
+                  const statusPoints: Record<string, number> = {
+                    pending: 1,
+                    'in-progress': 2,
+                    resolved: 4,
+                  };
+                  const total = statusPoints[complaint.status] ?? 1;
                   return (
                     <p
                       className="mt-3 border-t pt-3 text-xs"

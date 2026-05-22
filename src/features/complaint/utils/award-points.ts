@@ -7,7 +7,11 @@ export async function awardPointsForStatus(
   oldStatus: ComplaintStatus | null,
   newStatus: ComplaintStatus,
 ): Promise<void> {
-  if (!reporterId || !oldStatus || oldStatus === newStatus) return;
+  if (!reporterId || !oldStatus || oldStatus === newStatus) {
+    if (!reporterId) console.warn('awardPointsForStatus: reporterId is null/undefined');
+    if (!oldStatus) console.warn('awardPointsForStatus: oldStatus is null/undefined');
+    return;
+  }
 
   const { error } = await supabase.rpc('award_points_for_status_fn', {
     p_reporter_id: reporterId,

@@ -30,13 +30,6 @@ import {
 import type { Complaint, ComplaintUrgency, ComplaintStatus } from '@/features/complaint/types';
 import { awardPointsForStatus } from '@/features/complaint/utils/award-points';
 
-const getEarnedPoints = (bonusAwarded: number) => {
-  let points = 1;
-  if (bonusAwarded & 1) points += 1;
-  if (bonusAwarded & 2) points += 2;
-  return points;
-};
-
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
 
 type ActiveTab = 'total' | ComplaintStatus | 'critical';
@@ -180,7 +173,9 @@ export const ComplaintMonitor = () => {
     const current = complaints.find((c) => c.id === id);
     if (!current || current.status === newStatus) return;
 
-    const updates: Record<string, unknown> = { status: newStatus };
+    const updates: Record<string, unknown> = {
+      status: newStatus,
+    };
     if (newStatus === 'resolved') {
       updates.resolved_at = new Date().toISOString();
     }
@@ -198,12 +193,17 @@ export const ComplaintMonitor = () => {
       if (supabaseError) throw supabaseError;
 
       await awardPointsForStatus(current.reporter_id, id, current.status, newStatus);
-      const bonusBits: Record<string, number> = { pending: 0, 'in-progress': 1, resolved: 3 };
-      setComplaints((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, bonus_awarded: bonusBits[newStatus] } : c)),
-      );
       queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
       queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
+
+      // Silently refresh to ensure DB consistency
+      const { data: refreshed, error: refreshError } = await supabase
+        .from('grievances')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!refreshError && refreshed) {
+        setComplaints(refreshed);
+      }
     } catch (err: unknown) {
       fetchGrievances();
       const message =
@@ -282,7 +282,10 @@ export const ComplaintMonitor = () => {
       Category: CATEGORY_LABELS[c.category] || c.category,
       Urgency: URGENCY_LABELS[c.urgency] || c.urgency,
       Status: STATUS_LABELS[c.status] || c.status,
-      Points: getEarnedPoints(c.bonus_awarded ?? 0),
+      Points: (() => {
+        const statusPoints: Record<string, number> = { pending: 1, 'in-progress': 2, resolved: 4 };
+        return statusPoints[c.status] ?? 1;
+      })(),
       Location: c.location || '',
       'Image URL': c.image_url || '',
       'Date Created': c.created_at?.split('T')[0] || '',
@@ -652,10 +655,17 @@ export const ComplaintMonitor = () => {
                       <div className="flex items-center gap-1.5">
                         <Trophy className="h-3.5 w-3.5 text-amber-500" />
                         <span className="text-sm font-bold" style={{ color: '#42493e' }}>
-                          {getEarnedPoints(complaint.bonus_awarded ?? 0)}
+                          {(() => {
+                            const statusPoints: Record<string, number> = {
+                              pending: 1,
+                              'in-progress': 2,
+                              resolved: 4,
+                            };
+                            return statusPoints[complaint.status] ?? 1;
+                          })()}
                         </span>
                         <span className="text-[10px]" style={{ color: '#72796e' }}>
-                          / 4
+                          / 4 pts
                         </span>
                       </div>
                     </td>
