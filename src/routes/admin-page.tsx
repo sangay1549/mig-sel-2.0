@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ClipboardList, ChartPie, Table2, Menu } from 'lucide-react';
+import { ClipboardList, ChartPie, Table2, Menu, Recycle, AlertTriangle } from 'lucide-react';
 import { DashboardSidebar, type NavView } from '@/components/layout/dashboard-sidebar';
 import { WasteRecord } from '@/features/waste/components/waste-record';
 import { WasteCharts } from '@/features/waste/components/waste-charts';
 import { ComplaintMonitor } from '@/features/complaint/components/complaint-monitor';
+import { ComplaintCharts } from '@/features/complaint/components/complaint-charts';
 
 const iconMap: Record<NavView, typeof ClipboardList> = {
   charts: ChartPie,
@@ -16,6 +17,7 @@ export const AdminPage = () => {
   const [searchParams] = useSearchParams();
   const defaultView = searchParams.get('view') === 'complaint' ? 'complaint' : 'charts';
   const [activeView, setActiveView] = useState<NavView>(defaultView);
+  const [analyticsTab, setAnalyticsTab] = useState<'waste' | 'complaint'>('waste');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const pageMeta: Record<NavView, { title: string; description: string }> = {
@@ -83,7 +85,37 @@ export const AdminPage = () => {
               </div>
             )}
 
-            {activeView === 'charts' && <WasteCharts />}
+            {activeView === 'charts' && (
+              <div className="space-y-6">
+                <div className="flex gap-1 rounded-lg border bg-white p-1 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsTab('waste')}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+                      analyticsTab === 'waste'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    }`}
+                  >
+                    <Recycle className="h-4 w-4" />
+                    Waste Management
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsTab('complaint')}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+                      analyticsTab === 'complaint'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    }`}
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    Complaint Monitoring
+                  </button>
+                </div>
+                {analyticsTab === 'waste' ? <WasteCharts /> : <ComplaintCharts />}
+              </div>
+            )}
             {activeView === 'table' && <WasteRecord />}
             {activeView === 'complaint' && <ComplaintMonitor />}
           </div>
