@@ -1,6 +1,16 @@
--- SECURITY DEFINER function to award status-change points
--- Bypasses RLS so admins can update any user's profile points.
--- bonus_awarded stores the direct point value: pending=1, in-progress=2, resolved=4
+-- Migrate existing bonus_awarded values from bitmask to direct point values
+-- Old bitmask: 0 (pending), 1 (in-progress), 3 (resolved)
+-- New:          1 (pending), 2 (in-progress), 4 (resolved)
+UPDATE public.grievances
+SET bonus_awarded = CASE
+  WHEN bonus_awarded = 0 THEN 1
+  WHEN bonus_awarded = 1 THEN 2
+  WHEN bonus_awarded = 3 THEN 4
+  ELSE 1
+END;
+
+-- Replace the function with direct point mapping
+-- pending=1, in-progress=2, resolved=4
 -- Delta = new_value - old_value (handles both forward and backward transitions)
 CREATE OR REPLACE FUNCTION award_points_for_status_fn(
   p_reporter_id UUID,
