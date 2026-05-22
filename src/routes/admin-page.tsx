@@ -57,25 +57,31 @@ export const AdminPage = () => {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-bold tracking-tight">{pageTitle}</h1>
-            <p className="text-muted-foreground/70 truncate text-xs">{pageDescription}</p>
-          </div>
+          {activeView !== 'complaint' && (
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-sm font-bold tracking-tight">{pageTitle}</h1>
+              <p className="text-muted-foreground/70 truncate text-xs">{pageDescription}</p>
+            </div>
+          )}
         </header>
 
         <main className="flex-1 overflow-auto">
           <div className="mx-auto px-4 py-6 sm:px-6 lg:px-8" style={{ maxWidth: '1200px' }}>
-            <div className="mb-8 hidden md:block">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary flex h-10 w-10 items-center justify-center rounded-lg">
-                  <IconComponent className="text-primary-foreground h-5 w-5" />
-                </div>
-                <div>
-                  <h1 className="text-foreground text-xl font-bold tracking-tight">{pageTitle}</h1>
-                  <p className="text-muted-foreground/70 mt-0.5 text-sm">{pageDescription}</p>
+            {activeView !== 'complaint' && (
+              <div className="mb-8 hidden md:block">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary flex h-10 w-10 items-center justify-center rounded-lg">
+                    <IconComponent className="text-primary-foreground h-5 w-5" />
+                  </div>
+                  <div>
+                    <h1 className="text-foreground text-xl font-bold tracking-tight">
+                      {pageTitle}
+                    </h1>
+                    <p className="text-muted-foreground/70 mt-0.5 text-sm">{pageDescription}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {activeView === 'charts' && <WasteCharts />}
             {activeView === 'table' && <WasteRecord />}
