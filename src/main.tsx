@@ -6,6 +6,7 @@ import { router } from './routes/router';
 import { queryClient } from './lib/query-client';
 import { AuthProvider } from './providers/auth-provider';
 import './styles/globals.css';
+import 'leaflet/dist/leaflet.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

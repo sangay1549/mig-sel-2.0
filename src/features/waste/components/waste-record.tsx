@@ -1,5 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Package, ChevronLeft, ChevronRight, Pencil, X, Check, GripVertical } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  X,
+  Check,
+  GripVertical,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase'; // <-- Ensure this path matches your Supabase client setup
@@ -60,17 +70,24 @@ function Pagination({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className="flex items-center justify-between border-t px-2 pt-4" style={{ borderColor: '#e5e2e1' }}>
+    <div
+      className="flex items-center justify-between border-t px-2 pt-4"
+      style={{ borderColor: '#e5e2e1' }}
+    >
       <div className="flex items-center gap-2">
-        <span className="text-xs" style={{ color: '#72796e' }}>Rows per page:</span>
+        <span className="text-xs" style={{ color: '#72796e' }}>
+          Rows per page:
+        </span>
         <select
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="rounded-lg border px-2 py-1 text-xs outline-none transition-all"
+          className="rounded-lg border px-2 py-1 text-xs transition-all outline-none"
           style={{ borderColor: '#c2c9bb', color: '#42493e' }}
         >
           {ITEMS_PER_PAGE_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
           ))}
         </select>
         <span className="text-xs" style={{ color: '#72796e' }}>
@@ -91,7 +108,9 @@ function Pagination({
           .map((p, idx, arr) => (
             <span key={p} className="flex items-center">
               {idx > 0 && arr[idx - 1] !== p - 1 ? (
-                <span className="px-1 text-xs" style={{ color: '#c2c9bb' }}>...</span>
+                <span className="px-1 text-xs" style={{ color: '#c2c9bb' }}>
+                  ...
+                </span>
               ) : null}
               <button
                 onClick={() => onPageChange(p)}
@@ -133,11 +152,6 @@ export const WasteRecord = () => {
     notes: '',
   });
 
-  // Fetch data from Supabase on mount
-  useEffect(() => {
-    fetchRecords();
-  }, []);
-
   const fetchRecords = async () => {
     try {
       setLoading(true);
@@ -149,14 +163,14 @@ export const WasteRecord = () => {
       if (error) throw error;
 
       // Mapping database snake_case properties to frontend camelCase objects
-      const mappedData: WasteRecordType[] = (data || []).map((row: any) => ({
-        id: row.id,
-        category: row.category,
+      const mappedData: WasteRecordType[] = (data || []).map((row) => ({
+        id: row.id as string,
+        category: row.category as WasteCategory,
         quantity: Number(row.quantity),
-        unit: row.unit,
-        reportedAt: row.reported_at,
-        collectedAt: row.collected_at,
-        notes: row.notes,
+        unit: row.unit as string,
+        reportedAt: row.reported_at as string,
+        collectedAt: row.collected_at as string | null,
+        notes: row.notes as string | null,
       }));
 
       setRecords(mappedData);
@@ -167,7 +181,13 @@ export const WasteRecord = () => {
     }
   };
 
-  const resetForm = () => setForm({ category: 'organic-food', quantity: '', unit: 'ton', notes: '' });
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchRecords();
+  }, []);
+
+  const resetForm = () =>
+    setForm({ category: 'organic-food', quantity: '', unit: 'ton', notes: '' });
 
   const totalPages = Math.ceil(records.length / itemsPerPage);
   const paginatedRecords = records.slice(
@@ -189,10 +209,7 @@ export const WasteRecord = () => {
         notes: form.notes,
       };
 
-      const { data, error } = await supabase
-        .from('waste_records')
-        .insert([payload])
-        .select();
+      const { data, error } = await supabase.from('waste_records').insert([payload]).select();
 
       if (error) throw error;
 
@@ -209,7 +226,7 @@ export const WasteRecord = () => {
         };
         setRecords((prev) => [newRecord, ...prev]);
       }
-      
+
       resetForm();
       setShowForm(false);
       setCurrentPage(1);
@@ -220,24 +237,18 @@ export const WasteRecord = () => {
 
   const handleUpdate = async (id: string, updatedFields: Partial<WasteRecordType>) => {
     try {
-      // Map frontend camelCase structures back to postgres snake_case
-      const dbPayload: any = {};
+      const dbPayload: Record<string, unknown> = {};
       if (updatedFields.category) dbPayload.category = updatedFields.category;
       if (updatedFields.quantity !== undefined) dbPayload.quantity = Number(updatedFields.quantity);
       if (updatedFields.unit) dbPayload.unit = updatedFields.unit;
       if (updatedFields.reportedAt) dbPayload.reported_at = updatedFields.reportedAt;
       if (updatedFields.notes !== undefined) dbPayload.notes = updatedFields.notes;
 
-      const { error } = await supabase
-        .from('waste_records')
-        .update(dbPayload)
-        .eq('id', id);
+      const { error } = await supabase.from('waste_records').update(dbPayload).eq('id', id);
 
       if (error) throw error;
 
-      setRecords((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r))
-      );
+      setRecords((prev) => prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r)));
       setEditingId(null);
     } catch (err) {
       console.error('Error updating record:', err);
@@ -246,10 +257,7 @@ export const WasteRecord = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('waste_records')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('waste_records').delete().eq('id', id);
 
       if (error) throw error;
       setRecords((prev) => prev.filter((r) => r.id !== id));
@@ -262,18 +270,26 @@ export const WasteRecord = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: '#154212' }}>
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-lg"
+            style={{ backgroundColor: '#154212' }}
+          >
             <Package className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-tight" style={{ color: '#1c1b1b' }}>Waste Records</h2>
+            <h2 className="text-lg font-bold tracking-tight" style={{ color: '#1c1b1b' }}>
+              Waste Records
+            </h2>
             <p className="text-xs" style={{ color: '#72796e' }}>
               {loading ? 'Loading...' : `${records.length} total records`}
             </p>
           </div>
         </div>
         <Button
-          onClick={() => { setShowForm(!showForm); setEditingId(null); }}
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditingId(null);
+          }}
           size="sm"
           className="transition-all duration-300 hover:scale-105"
           style={{ backgroundColor: '#154212', color: '#ffffff' }}
@@ -291,25 +307,42 @@ export const WasteRecord = () => {
         >
           <div className="mb-5 flex items-center gap-2">
             <GripVertical className="h-4 w-4" style={{ color: '#c2c9bb' }} />
-            <span className="text-sm font-bold tracking-wide uppercase" style={{ color: '#42493e' }}>New Waste Record</span>
+            <span
+              className="text-sm font-bold tracking-wide uppercase"
+              style={{ color: '#42493e' }}
+            >
+              New Waste Record
+            </span>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold tracking-wide uppercase" style={{ color: '#42493e' }}>Category</label>
+              <label
+                className="text-xs font-bold tracking-wide uppercase"
+                style={{ color: '#42493e' }}
+              >
+                Category
+              </label>
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value as WasteCategory })}
-                className="flex h-10 w-full items-center rounded-lg border px-3 text-sm outline-none transition-all"
+                className="flex h-10 w-full items-center rounded-lg border px-3 text-sm transition-all outline-none"
                 style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
               >
                 {CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="flex gap-2">
               <div className="flex-1 space-y-1.5">
-                <label className="text-xs font-bold tracking-wide uppercase" style={{ color: '#42493e' }}>Quantity</label>
+                <label
+                  className="text-xs font-bold tracking-wide uppercase"
+                  style={{ color: '#42493e' }}
+                >
+                  Quantity
+                </label>
                 <Input
                   type="number"
                   step="0.1"
@@ -323,11 +356,16 @@ export const WasteRecord = () => {
                 />
               </div>
               <div className="w-24 space-y-1.5">
-                <label className="text-xs font-bold tracking-wide uppercase" style={{ color: '#42493e' }}>Unit</label>
+                <label
+                  className="text-xs font-bold tracking-wide uppercase"
+                  style={{ color: '#42493e' }}
+                >
+                  Unit
+                </label>
                 <select
                   value={form.unit}
                   onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  className="flex h-10 w-full items-center rounded-lg border px-2 text-sm outline-none transition-all"
+                  className="flex h-10 w-full items-center rounded-lg border px-2 text-sm transition-all outline-none"
                   style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
                 >
                   <option value="kg">kg</option>
@@ -338,21 +376,38 @@ export const WasteRecord = () => {
               </div>
             </div>
             <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
-              <label className="text-xs font-bold tracking-wide uppercase" style={{ color: '#42493e' }}>Notes</label>
+              <label
+                className="text-xs font-bold tracking-wide uppercase"
+                style={{ color: '#42493e' }}
+              >
+                Notes
+              </label>
               <textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 placeholder="Additional details..."
-                className="min-h-[80px] w-full rounded-lg border px-3 py-2 text-sm outline-none transition-all placeholder:text-sm"
+                className="min-h-[80px] w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none placeholder:text-sm"
                 style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
               />
             </div>
           </div>
           <div className="mt-5 flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => { setShowForm(false); resetForm(); }} size="sm">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setShowForm(false);
+                resetForm();
+              }}
+              size="sm"
+            >
               Cancel
             </Button>
-            <Button type="submit" size="sm" style={{ backgroundColor: '#154212', color: '#ffffff' }}>
+            <Button
+              type="submit"
+              size="sm"
+              style={{ backgroundColor: '#154212', color: '#ffffff' }}
+            >
               <Plus className="mr-1 h-4 w-4" />
               Add Record
             </Button>
@@ -360,28 +415,68 @@ export const WasteRecord = () => {
         </form>
       )}
 
-      <div className="overflow-hidden rounded-xl border shadow-sm" style={{ backgroundColor: '#ffffff', borderColor: '#e5e2e1', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+      <div
+        className="overflow-hidden rounded-xl border shadow-sm"
+        style={{
+          backgroundColor: '#ffffff',
+          borderColor: '#e5e2e1',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+        }}
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b" style={{ borderColor: '#e5e2e1' }}>
-                <th className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>Category</th>
-                <th className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>Quantity</th>
-                <th className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>Date</th>
-                <th className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>Notes</th>
-                <th className="w-24 px-4 py-3.5 text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>Actions</th>
+                <th
+                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
+                  style={{ color: '#72796e' }}
+                >
+                  Category
+                </th>
+                <th
+                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
+                  style={{ color: '#72796e' }}
+                >
+                  Quantity
+                </th>
+                <th
+                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
+                  style={{ color: '#72796e' }}
+                >
+                  Date
+                </th>
+                <th
+                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
+                  style={{ color: '#72796e' }}
+                >
+                  Notes
+                </th>
+                <th
+                  className="w-24 px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
+                  style={{ color: '#72796e' }}
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-16 text-center text-sm" style={{ color: '#72796e' }}>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-16 text-center text-sm"
+                    style={{ color: '#72796e' }}
+                  >
                     Fetching records from database...
                   </td>
                 </tr>
               ) : paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-16 text-center text-sm" style={{ color: '#c2c9bb' }}>
+                  <td
+                    colSpan={5}
+                    className="px-4 py-16 text-center text-sm"
+                    style={{ color: '#c2c9bb' }}
+                  >
                     No waste records found
                   </td>
                 </tr>
@@ -397,12 +492,22 @@ export const WasteRecord = () => {
                         <td className="px-4 py-2">
                           <select
                             value={record.category}
-                            onChange={(e) => setRecords((prev) => prev.map((r) => r.id === record.id ? { ...r, category: e.target.value as WasteCategory } : r))}
+                            onChange={(e) =>
+                              setRecords((prev) =>
+                                prev.map((r) =>
+                                  r.id === record.id
+                                    ? { ...r, category: e.target.value as WasteCategory }
+                                    : r,
+                                ),
+                              )
+                            }
                             className="h-8 w-full rounded-lg border px-2 text-xs outline-none"
                             style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
                           >
                             {CATEGORIES.map((c) => (
-                              <option key={c.value} value={c.value}>{c.label}</option>
+                              <option key={c.value} value={c.value}>
+                                {c.label}
+                              </option>
                             ))}
                           </select>
                         </td>
@@ -412,13 +517,27 @@ export const WasteRecord = () => {
                               type="number"
                               step="0.1"
                               value={record.quantity}
-                              onChange={(e) => setRecords((prev) => prev.map((r) => r.id === record.id ? { ...r, quantity: Number(e.target.value) } : r))}
+                              onChange={(e) =>
+                                setRecords((prev) =>
+                                  prev.map((r) =>
+                                    r.id === record.id
+                                      ? { ...r, quantity: Number(e.target.value) }
+                                      : r,
+                                  ),
+                                )
+                              }
                               className="h-8 w-20 text-sm"
                               style={{ borderColor: '#c2c9bb' }}
                             />
                             <select
                               value={record.unit}
-                              onChange={(e) => setRecords((prev) => prev.map((r) => r.id === record.id ? { ...r, unit: e.target.value } : r))}
+                              onChange={(e) =>
+                                setRecords((prev) =>
+                                  prev.map((r) =>
+                                    r.id === record.id ? { ...r, unit: e.target.value } : r,
+                                  ),
+                                )
+                              }
                               className="h-8 rounded-lg border px-1 text-xs outline-none"
                               style={{ borderColor: '#c2c9bb', color: '#1c1b1b' }}
                             >
@@ -433,7 +552,13 @@ export const WasteRecord = () => {
                           <Input
                             type="date"
                             value={record.reportedAt}
-                            onChange={(e) => setRecords((prev) => prev.map((r) => r.id === record.id ? { ...r, reportedAt: e.target.value } : r))}
+                            onChange={(e) =>
+                              setRecords((prev) =>
+                                prev.map((r) =>
+                                  r.id === record.id ? { ...r, reportedAt: e.target.value } : r,
+                                ),
+                              )
+                            }
                             className="h-8 text-xs"
                             style={{ borderColor: '#c2c9bb' }}
                           />
@@ -441,7 +566,13 @@ export const WasteRecord = () => {
                         <td className="px-4 py-2">
                           <Input
                             value={record.notes || ''}
-                            onChange={(e) => setRecords((prev) => prev.map((r) => r.id === record.id ? { ...r, notes: e.target.value } : r))}
+                            onChange={(e) =>
+                              setRecords((prev) =>
+                                prev.map((r) =>
+                                  r.id === record.id ? { ...r, notes: e.target.value } : r,
+                                ),
+                              )
+                            }
                             className="h-8 text-sm"
                             style={{ borderColor: '#c2c9bb' }}
                           />
@@ -468,9 +599,17 @@ export const WasteRecord = () => {
                     ) : (
                       <>
                         <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium"
-                            style={{ borderColor: '#e5e2e1', color: '#42493e' }}>
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CATEGORIES.find((c) => c.value === record.category)?.color }} />
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium"
+                            style={{ borderColor: '#e5e2e1', color: '#42493e' }}
+                          >
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{
+                                backgroundColor: CATEGORIES.find((c) => c.value === record.category)
+                                  ?.color,
+                              }}
+                            />
                             {CATEGORY_LABELS[record.category]}
                           </span>
                         </td>
@@ -480,10 +619,15 @@ export const WasteRecord = () => {
                         <td className="px-4 py-3 text-xs" style={{ color: '#72796e' }}>
                           <div>{record.reportedAt}</div>
                           {record.collectedAt && (
-                            <div className="mt-0.5" style={{ color: '#16a34a' }}>✓ {record.collectedAt}</div>
+                            <div className="mt-0.5" style={{ color: '#16a34a' }}>
+                              ✓ {record.collectedAt}
+                            </div>
                           )}
                         </td>
-                        <td className="max-w-[180px] truncate px-4 py-3 text-xs" style={{ color: '#72796e' }}>
+                        <td
+                          className="max-w-[180px] truncate px-4 py-3 text-xs"
+                          style={{ color: '#72796e' }}
+                        >
                           {record.notes}
                         </td>
                         <td className="px-4 py-3">
