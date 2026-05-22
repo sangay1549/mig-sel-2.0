@@ -43,11 +43,11 @@ export const CATEGORY_LABELS: Record<ComplaintCategory, string> = {
 };
 
 export const CATEGORY_COLORS: Record<ComplaintCategory, string> = {
-  road: '#d97706',
-  garbage: '#3b82f6',
-  lighting: '#eab308',
+  road: '#6366f1',
+  garbage: '#10b981',
+  lighting: '#f59e0b',
   drainage: '#06b6d4',
-  other: '#6b7280',
+  other: '#8b5cf6',
 };
 
 export const STATUS_LABELS: Record<ComplaintStatus, string> = {

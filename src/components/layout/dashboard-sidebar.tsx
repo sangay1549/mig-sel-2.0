@@ -6,7 +6,7 @@ import {
   LogOut,
   Map,
   Leaf,
-  ChartPie,
+  ChartLine,
   Table2,
   ChevronDown,
   ChevronRight,
@@ -19,6 +19,12 @@ export type NavView = 'charts' | 'table' | 'complaint';
 
 const navItems = [
   {
+    id: 'charts' as const,
+    label: 'Analytics',
+    icon: ChartLine,
+    children: null,
+  },
+  {
     id: 'complaint' as const,
     label: 'Complaint Monitoring',
     icon: ClipboardList,
@@ -28,10 +34,7 @@ const navItems = [
     id: 'waste' as const,
     label: 'Waste Management',
     icon: Recycle,
-    children: [
-      { id: 'charts' as const, label: 'Analytics', icon: ChartPie },
-      { id: 'table' as const, label: 'Records', icon: Table2 },
-    ],
+    children: [{ id: 'table' as const, label: 'Records', icon: Table2 }],
   },
 ] as const;
 
@@ -88,7 +91,7 @@ export function DashboardSidebar({
                   onClick={() => setWasteExpanded(!wasteExpanded)}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-all duration-200',
-                    activeView === 'charts' || activeView === 'table'
+                    activeView === 'table'
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                   )}

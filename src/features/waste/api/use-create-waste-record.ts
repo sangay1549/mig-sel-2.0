@@ -7,6 +7,7 @@ type CreateInput = {
   category: WasteCategory;
   quantity: number;
   unit: string;
+  reportedAt: string;
   notes: string;
 };
 
@@ -19,7 +20,7 @@ export const useCreateWasteRecord = () => {
         category: input.category,
         quantity: input.quantity,
         unit: input.unit,
-        reported_at: new Date().toISOString().split('T')[0],
+        reported_at: input.reportedAt,
         collected_at: null,
         notes: input.notes,
       };

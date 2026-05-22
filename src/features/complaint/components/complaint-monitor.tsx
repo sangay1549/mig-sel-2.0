@@ -337,7 +337,9 @@ export const ComplaintMonitor = () => {
       <button
         type="button"
         onClick={() => handleTabClick(tab)}
-        className="rounded-xl border p-4 text-left shadow-sm transition-all hover:scale-[1.02]"
+        className={`rounded-xl border p-4 text-left shadow-sm transition-all hover:scale-[1.02] ${
+          isActive ? 'ring-2 ring-offset-1' : ''
+        }`}
         style={{
           backgroundColor: bgColor,
           borderColor: isActive ? ringColor : borderColor,
@@ -345,13 +347,20 @@ export const ComplaintMonitor = () => {
           outlineOffset: '2px',
         }}
       >
-        <div className="flex items-center gap-1.5">
-          {icon}
-          <p className="text-xs font-bold tracking-wide uppercase" style={{ color: textColor }}>
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-bold tracking-wide uppercase" style={{ color: textColor }}>
             {label}
           </p>
+          {icon && (
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-md"
+              style={{ backgroundColor: `${textColor}15` }}
+            >
+              {icon}
+            </div>
+          )}
         </div>
-        <p className="mt-1 text-3xl font-bold" style={{ color: textColor }}>
+        <p className="text-2xl font-bold" style={{ color: textColor }}>
           {count}
         </p>
       </button>
@@ -359,7 +368,7 @@ export const ComplaintMonitor = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div
@@ -419,7 +428,7 @@ export const ComplaintMonitor = () => {
       )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {tabCard('total', 'Total', summary.total, '#ffffff', '#e5e2e1', null, '#1c1b1b', '#154212')}
+        {tabCard('total', 'Total', summary.total, '#ffffff', '#e5e2e1', null, '#1c1b1b', '#1c1b1b')}
         {tabCard(
           'pending',
           'Pending',

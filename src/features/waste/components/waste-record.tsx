@@ -1,14 +1,5 @@
 import { useState } from 'react';
-import {
-  Plus,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Pencil,
-  X,
-  GripVertical,
-  Loader2,
-} from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Pencil, X, Loader2, Recycle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -41,13 +32,13 @@ function Pagination({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className="flex items-center justify-between border-t pt-4">
+    <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground/60 text-xs">Rows per page:</span>
+        <span className="text-muted-foreground/50 text-xs">Rows per page:</span>
         <select
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="border-input bg-card text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/30 h-7 rounded-lg border px-2 text-xs transition-all outline-none focus-visible:ring-2"
+          className="border-input text-muted-foreground bg-card h-7 rounded-lg border px-2 text-xs transition-all outline-none"
         >
           {ITEMS_PER_PAGE_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
@@ -55,7 +46,7 @@ function Pagination({
             </option>
           ))}
         </select>
-        <span className="text-muted-foreground/60 text-xs">
+        <span className="text-muted-foreground/50 text-xs">
           {startItem}–{endItem} of {totalItems}
         </span>
       </div>
@@ -63,7 +54,7 @@ function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage <= 1}
-          className="text-muted-foreground/60 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all disabled:opacity-30"
+          className="text-muted-foreground/40 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all disabled:opacity-30"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -72,15 +63,15 @@ function Pagination({
           .map((p, idx, arr) => (
             <span key={p} className="flex items-center">
               {idx > 0 && arr[idx - 1] !== p - 1 ? (
-                <span className="text-muted-foreground/40 px-1 text-xs">...</span>
+                <span className="text-muted-foreground/30 px-1 text-xs">...</span>
               ) : null}
               <button
                 onClick={() => onPageChange(p)}
                 className={cn(
                   'min-w-[28px] rounded-lg px-2 py-1 text-xs font-semibold transition-all',
                   p === currentPage
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'text-muted-foreground/60 hover:bg-accent hover:text-foreground',
                 )}
               >
                 {p}
@@ -90,7 +81,7 @@ function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage >= totalPages}
-          className="text-muted-foreground/60 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all disabled:opacity-30"
+          className="text-muted-foreground/40 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all disabled:opacity-30"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -114,11 +105,18 @@ export const WasteRecord = () => {
     category: 'organic-food' as WasteCategory,
     quantity: '',
     unit: 'ton',
+    reportedAt: new Date().toISOString().split('T')[0],
     notes: '',
   });
 
   const resetForm = () =>
-    setForm({ category: 'organic-food', quantity: '', unit: 'ton', notes: '' });
+    setForm({
+      category: 'organic-food',
+      quantity: '',
+      unit: 'ton',
+      reportedAt: new Date().toISOString().split('T')[0],
+      notes: '',
+    });
 
   const totalPages = Math.ceil(records.length / itemsPerPage);
   const paginatedRecords = records.slice(
@@ -135,6 +133,7 @@ export const WasteRecord = () => {
         category: form.category,
         quantity: Number(form.quantity),
         unit: form.unit,
+        reportedAt: form.reportedAt,
         notes: form.notes,
       },
       {
@@ -158,8 +157,20 @@ export const WasteRecord = () => {
   };
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex items-center justify-end">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 flex h-9 w-9 items-center justify-center rounded-lg">
+            <Recycle className="text-primary h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-foreground text-lg font-bold tracking-tight">Waste Records</h2>
+            <p className="text-muted-foreground/70 text-xs">
+              {records.length} record{records.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+        </div>
         <Button
           onClick={() => {
             setShowForm(!showForm);
@@ -172,26 +183,29 @@ export const WasteRecord = () => {
         </Button>
       </div>
 
+      {/* Add Record Form */}
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="animate-slide-down bg-card shadow-card rounded-xl border p-6"
+          className="bg-card shadow-card animate-slide-down rounded-xl border p-5"
         >
-          <div className="mb-5 flex items-center gap-2">
-            <GripVertical className="text-muted-foreground/40 h-4 w-4" />
-            <span className="text-muted-foreground text-sm font-bold tracking-wide uppercase">
+          <div className="mb-4 flex items-center gap-2 border-b pb-3">
+            <div className="bg-primary/10 flex h-6 w-6 items-center justify-center rounded-md">
+              <Plus className="text-primary h-3 w-3" />
+            </div>
+            <span className="text-foreground text-xs font-bold tracking-wide uppercase">
               New Waste Record
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1.5">
-              <label className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
+              <label className="text-muted-foreground/70 text-xs font-bold tracking-wide uppercase">
                 Category
               </label>
               <select
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value as WasteCategory })}
-                className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/30 flex h-10 w-full items-center rounded-lg border px-3 text-sm transition-all outline-none focus-visible:ring-2"
+                className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/30 flex h-9 w-full items-center rounded-lg border px-3 text-sm transition-all outline-none focus-visible:ring-2"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
@@ -202,7 +216,7 @@ export const WasteRecord = () => {
             </div>
             <div className="flex gap-2">
               <div className="flex-1 space-y-1.5">
-                <label className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
+                <label className="text-muted-foreground/70 text-xs font-bold tracking-wide uppercase">
                   Quantity
                 </label>
                 <Input
@@ -216,13 +230,13 @@ export const WasteRecord = () => {
                 />
               </div>
               <div className="w-24 space-y-1.5">
-                <label className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
+                <label className="text-muted-foreground/70 text-xs font-bold tracking-wide uppercase">
                   Unit
                 </label>
                 <select
                   value={form.unit}
                   onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                  className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/30 flex h-10 w-full items-center rounded-lg border px-2 text-sm transition-all outline-none focus-visible:ring-2"
+                  className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/30 flex h-9 w-full items-center rounded-lg border px-2 text-sm transition-all outline-none focus-visible:ring-2"
                 >
                   <option value="kg">kg</option>
                   <option value="ton">ton</option>
@@ -231,8 +245,19 @@ export const WasteRecord = () => {
                 </select>
               </div>
             </div>
+            <div className="space-y-1.5">
+              <label className="text-muted-foreground/70 text-xs font-bold tracking-wide uppercase">
+                Date
+              </label>
+              <Input
+                type="date"
+                value={form.reportedAt}
+                onChange={(e) => setForm({ ...form, reportedAt: e.target.value })}
+                required
+              />
+            </div>
             <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
-              <label className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
+              <label className="text-muted-foreground/70 text-xs font-bold tracking-wide uppercase">
                 Notes
               </label>
               <textarea
@@ -243,7 +268,7 @@ export const WasteRecord = () => {
               />
             </div>
           </div>
-          <div className="mt-5 flex justify-end gap-2">
+          <div className="mt-4 flex justify-end gap-2">
             <Button
               type="button"
               variant="ghost"
@@ -263,24 +288,25 @@ export const WasteRecord = () => {
         </form>
       )}
 
-      <Card className="shadow-card overflow-hidden p-0">
+      {/* Table */}
+      <Card className="overflow-hidden p-0 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-border/50 border-b">
-                <th className="text-muted-foreground/60 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
+                <th className="text-muted-foreground/50 bg-card sticky top-0 px-4 py-3 text-xs font-bold tracking-wide uppercase">
                   Category
                 </th>
-                <th className="text-muted-foreground/60 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
+                <th className="text-muted-foreground/50 bg-card sticky top-0 px-4 py-3 text-xs font-bold tracking-wide uppercase">
                   Quantity
                 </th>
-                <th className="text-muted-foreground/60 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
+                <th className="text-muted-foreground/50 bg-card sticky top-0 px-4 py-3 text-xs font-bold tracking-wide uppercase">
                   Date
                 </th>
-                <th className="text-muted-foreground/60 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
+                <th className="text-muted-foreground/50 bg-card sticky top-0 px-4 py-3 text-xs font-bold tracking-wide uppercase">
                   Notes
                 </th>
-                <th className="text-muted-foreground/60 w-24 px-4 py-3.5 text-xs font-bold tracking-wide uppercase">
+                <th className="text-muted-foreground/50 bg-card sticky top-0 w-24 px-4 py-3 text-xs font-bold tracking-wide uppercase">
                   Actions
                 </th>
               </tr>
@@ -289,7 +315,7 @@ export const WasteRecord = () => {
               {isLoading ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-16 text-center">
-                    <div className="text-muted-foreground/60 flex flex-col items-center justify-center gap-2">
+                    <div className="text-muted-foreground/50 flex flex-col items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       <span className="text-xs">Loading records...</span>
                     </div>
@@ -299,7 +325,7 @@ export const WasteRecord = () => {
                 <tr>
                   <td
                     colSpan={5}
-                    className="text-muted-foreground/40 px-4 py-16 text-center text-sm"
+                    className="text-muted-foreground/30 px-4 py-16 text-center text-sm"
                   >
                     No waste records found
                   </td>
@@ -308,7 +334,7 @@ export const WasteRecord = () => {
                 paginatedRecords.map((record) => (
                   <tr
                     key={record.id}
-                    className="group border-accent/50 hover:bg-muted/50 border-b transition-colors last:border-0"
+                    className="group border-border/40 hover:bg-muted/30 border-b transition-colors last:border-0"
                   >
                     {editingId === record.id ? (
                       <>
@@ -388,7 +414,7 @@ export const WasteRecord = () => {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => setEditingId(null)}
-                              className="text-muted-foreground/60 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all"
+                              className="text-muted-foreground/50 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all"
                             >
                               <X className="h-3.5 w-3.5" />
                             </button>
@@ -398,9 +424,15 @@ export const WasteRecord = () => {
                     ) : (
                       <>
                         <td className="px-4 py-3">
-                          <span className="border-border/50 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium">
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                            style={{
+                              backgroundColor: `${CATEGORIES.find((c) => c.value === record.category)?.color}12`,
+                              color: CATEGORIES.find((c) => c.value === record.category)?.color,
+                            }}
+                          >
                             <span
-                              className="h-2 w-2 rounded-full"
+                              className="h-1.5 w-1.5 rounded-full"
                               style={{
                                 backgroundColor: CATEGORIES.find((c) => c.value === record.category)
                                   ?.color,
@@ -409,30 +441,33 @@ export const WasteRecord = () => {
                             {CATEGORY_LABELS[record.category]}
                           </span>
                         </td>
-                        <td className="text-foreground px-4 py-3 font-medium">
+                        <td className="text-foreground px-4 py-3 font-medium tabular-nums">
                           {record.quantity} {record.unit}
                         </td>
-                        <td className="text-muted-foreground/70 px-4 py-3 text-xs">
+                        <td className="text-muted-foreground/60 px-4 py-3 text-xs">
                           <div>{record.reportedAt}</div>
                           {record.collectedAt && (
-                            <div className="mt-0.5 text-green-600">✓ {record.collectedAt}</div>
+                            <div className="mt-0.5 flex items-center gap-1 text-green-600">
+                              <span>✓</span>
+                              <span>{record.collectedAt}</span>
+                            </div>
                           )}
                         </td>
-                        <td className="text-muted-foreground/70 max-w-[180px] truncate px-4 py-3 text-xs">
-                          {record.notes}
+                        <td className="text-muted-foreground/60 max-w-[180px] truncate px-4 py-3 text-xs">
+                          {record.notes || <span className="text-muted-foreground/20">—</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 opacity-0 transition-all duration-200 group-hover:opacity-100">
+                          <div className="flex items-center gap-1">
                             <button
                               onClick={() => setEditingId(record.id)}
-                              className="text-muted-foreground/60 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all"
+                              className="text-muted-foreground/40 hover:bg-accent hover:text-foreground rounded-lg p-1.5 transition-all"
                               title="Edit"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button
                               onClick={() => handleDelete(record.id)}
-                              className="text-destructive/70 hover:bg-destructive/10 hover:text-destructive rounded-lg p-1.5 transition-all"
+                              className="text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive rounded-lg p-1.5 transition-all"
                               title="Delete"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -448,7 +483,7 @@ export const WasteRecord = () => {
           </table>
         </div>
 
-        <div className="px-4 py-3">
+        <div className="border-border/50 border-t px-4 py-3">
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
