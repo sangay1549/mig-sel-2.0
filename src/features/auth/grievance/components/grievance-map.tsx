@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useGrievances } from '../api/use-grievances';
 import { useGeoLocation } from '../hooks/use-geo-location';
+import { useSession } from '@/features/auth/api/use-session';
 import {
   Search,
   Loader2,
@@ -17,6 +18,7 @@ import {
   ArrowRight,
   ChevronDown,
   Check,
+  Link2,
 } from 'lucide-react';
 import { DirectionsControl } from './directions-control';
 import { ImageLightbox } from './image-lightbox';
@@ -24,7 +26,12 @@ import { ImageLightbox } from './image-lightbox';
 const SARPANG_BOUNDS = L.latLngBounds([26.7032, 89.9213], [27.2401, 90.7235]);
 const DEFAULT_CENTER = { lat: 26.9312, lng: 90.4795 };
 
-function categoryIcon(category: string, status: string): L.DivIcon {
+function categoryIcon(
+  category: string,
+  status: string,
+  isMerged = false,
+  isOwned = false,
+): L.DivIcon {
   const colors: Record<string, string> = {
     road: '#d97706',
     garbage: '#2563eb',
@@ -47,12 +54,16 @@ function categoryIcon(category: string, status: string): L.DivIcon {
   const svg = icons[category] ?? icons.other;
 
   const isResolved = status === 'resolved';
+  const borderColor = isOwned ? '#3b82f6' : 'white';
+  const borderWidth = isMerged ? '2px' : '3px';
+  const borderStyle = isMerged ? 'dashed' : 'solid';
+  const ringColor = isMerged ? '#a855f744' : `${color}44`;
 
   return L.divIcon({
     html: `<div style="
       position: relative;
       width: 40px;
-      height: 40px;
+      height: ${isOwned ? 52 : 40}px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -63,8 +74,8 @@ function categoryIcon(category: string, status: string): L.DivIcon {
         height: 36px;
         background: ${color};
         border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.25), 0 0 0 2px ${color}44;
+        border: ${borderWidth} ${borderStyle} ${borderColor};
+        box-shadow: 0 3px 12px rgba(0,0,0,0.25), 0 0 0 2px ${ringColor};
         display: flex;
         align-items: center;
         justify-content: center;
@@ -74,8 +85,26 @@ function categoryIcon(category: string, status: string): L.DivIcon {
         ${svg}
       </div>
       ${
-        !isResolved
+        isMerged && !isResolved
           ? `<div style="
+        position: absolute;
+        bottom: 0px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 14px;
+        height: 14px;
+        background: #a855f7;
+        border-radius: 50%;
+        border: 2px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 7px;
+        color: white;
+        font-weight: bold;
+      ">⛓</div>`
+          : !isResolved
+            ? `<div style="
         position: absolute;
         bottom: -2px;
         left: 50%;
@@ -86,13 +115,31 @@ function categoryIcon(category: string, status: string): L.DivIcon {
         border-radius: 50%;
         border: 2px solid white;
       "></div>`
+            : ''
+      }
+      ${
+        isOwned
+          ? `<div style="
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 12px;
+        height: 12px;
+        background: #3b82f6;
+        border-radius: 50%;
+        border: 2px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 0 2px #3b82f644;
+      "></div>`
           : ''
       }
     </div>`,
     className: '',
-    iconSize: [40, 48],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -42],
+    iconSize: [40, isOwned ? 52 : 48],
+    iconAnchor: [20, isOwned ? 44 : 40],
+    popupAnchor: [0, isOwned ? -46 : -42],
   });
 }
 
@@ -662,6 +709,8 @@ function ScaleControl() {
 
 function GrievanceMarkers({
   grievances,
+  allGrievances,
+  currentUserId,
   onDirectionsTarget,
 }: {
   grievances: Array<{
@@ -675,7 +724,11 @@ function GrievanceMarkers({
     desc: string;
     image_url: string;
     resolved_image_url?: string;
+    parent_id: string | null;
+    reporter_id: string;
   }>;
+  allGrievances: Array<{ id: string; title: string; parent_id: string | null }>;
+  currentUserId: string | undefined;
   onDirectionsTarget: (lat: number, lng: number, title: string) => void;
 }) {
   const map = useMap();
@@ -690,6 +743,22 @@ function GrievanceMarkers({
   }, [map]);
 
   const precision = zoom >= 17 ? 5 : zoom >= 15 ? 4 : zoom >= 13 ? 3 : 2;
+
+  const childrenMap = useMemo(() => {
+    const map = new Map<string, typeof allGrievances>();
+    for (const g of allGrievances) {
+      if (g.parent_id) {
+        const existing = map.get(g.parent_id);
+        if (existing) existing.push(g);
+        else map.set(g.parent_id, [g]);
+      }
+    }
+    return map;
+  }, [allGrievances]);
+
+  const findParentTitle = (parentId: string) => {
+    return allGrievances.find((g) => g.id === parentId)?.title || 'Unknown';
+  };
 
   const grouped = useMemo(() => {
     const map_ = new Map<string, typeof grievances>();
@@ -710,8 +779,17 @@ function GrievanceMarkers({
   return Array.from(grouped.entries()).map(([key, items]) => {
     if (items.length === 1) {
       const g = items[0];
+      const isMerged = !!g.parent_id;
+      const isOwned = currentUserId === g.reporter_id;
+      const parentTitle = g.parent_id ? findParentTitle(g.parent_id) : null;
+      const children = childrenMap.get(g.id);
+
       return (
-        <Marker key={g.id} position={[g.lat, g.lng]} icon={categoryIcon(g.category, g.mapStatus)}>
+        <Marker
+          key={g.id}
+          position={[g.lat, g.lng]}
+          icon={categoryIcon(g.category, g.mapStatus, isMerged, isOwned)}
+        >
           <Popup>
             <div className="max-w-[250px] font-sans">
               <div className="flex items-start justify-between gap-3">
@@ -732,6 +810,53 @@ function GrievanceMarkers({
                       : 'Resolved'}
                 </span>
               </div>
+
+              {isMerged && parentTitle && (
+                <div
+                  className="mt-2 rounded-lg border border-dashed px-2.5 py-1.5"
+                  style={{ borderColor: '#a855f7', backgroundColor: '#faf5ff' }}
+                >
+                  <p className="text-[10px] leading-tight font-medium" style={{ color: '#a855f7' }}>
+                    ⛓ This report has been linked as a duplicate of{' '}
+                    <span className="font-semibold">{parentTitle}</span>
+                  </p>
+                </div>
+              )}
+
+              {isOwned && !isMerged && (
+                <div
+                  className="mt-2 rounded-lg px-2.5 py-1.5"
+                  style={{ backgroundColor: '#eff6ff', border: '1px solid #93c5fd' }}
+                >
+                  <p className="text-[10px] leading-tight font-medium text-blue-600">
+                    ● Your report
+                  </p>
+                </div>
+              )}
+
+              {isOwned && isMerged && !childrenMap.has(g.id) && (
+                <div
+                  className="mt-2 rounded-lg border border-dashed px-2.5 py-1.5"
+                  style={{ borderColor: '#f59e0b', backgroundColor: '#fffbeb' }}
+                >
+                  <p className="text-[10px] leading-tight font-medium text-amber-600">
+                    ⛓ Your photo has been merged — another report with better evidence was used as
+                    the master complaint
+                  </p>
+                </div>
+              )}
+
+              {children && children.length > 0 && (
+                <div
+                  className="mt-2 rounded-lg px-2.5 py-1.5"
+                  style={{ backgroundColor: '#fefce8', border: '1px solid #fde68a' }}
+                >
+                  <p className="text-[10px] leading-tight font-medium text-amber-700">
+                    <Link2 className="mr-0.5 inline h-3 w-3" />
+                    Contains {children.length} linked duplicate{children.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              )}
 
               {g.image_url && (
                 <ImageLightbox
@@ -824,7 +949,9 @@ export const GrievanceMap = () => {
   } | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const { coords: detectedCoords, accuracy } = useGeoLocation();
+  const { data: session } = useSession();
   const { data: grievances, isLoading, isError, error } = useGrievances();
+  const currentUserId = session?.user?.id;
 
   const mappedGrievances = (grievances ?? []).map((g) => ({
     id: g.id,
@@ -833,10 +960,12 @@ export const GrievanceMap = () => {
     status: g.status,
     mapStatus: mapStatus(g.status),
     lat: g.latitude === 0 && g.longitude === 0 ? DEFAULT_CENTER.lat : g.latitude,
-    lng: g.latitude === 0 && g.longitude === 0 ? DEFAULT_CENTER.lng : g.longitude,
+    lng: g.longitude === 0 && g.longitude === 0 ? DEFAULT_CENTER.lng : g.longitude,
     desc: g.description,
     image_url: g.image_url,
     resolved_image_url: g.resolved_image_url,
+    parent_id: g.parent_id,
+    reporter_id: g.reporter_id,
   }));
 
   const filteredGrievances =
@@ -938,6 +1067,8 @@ export const GrievanceMap = () => {
 
           <GrievanceMarkers
             grievances={filteredGrievances}
+            allGrievances={mappedGrievances}
+            currentUserId={currentUserId}
             onDirectionsTarget={(lat, lng, title) => setDirectionsTarget({ lat, lng, title })}
           />
 

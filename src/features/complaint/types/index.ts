@@ -19,5 +19,6 @@ export type Complaint = {
   resolved_image_url: string | null;
   urgency: ComplaintUrgency;
   resolved_at: string | null;
+  parent_id: string | null;
   bonus_awarded: number;
 };

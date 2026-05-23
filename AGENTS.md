@@ -37,4 +37,5 @@ Pre-commit hook currently runs `npm test` (no-op). `lint-staged` is configured b
 - `tsconfig.json` references `tsconfig.app.json` (src) and `tsconfig.node.json` (vite.config.ts). Both are separate TypeScript projects.
 - Husky pre-commit file runs `npm test` — it may need updating to `npx lint-staged` if you want pre-commit lint/format.
 - No tests exist; `npm test` prints `"No tests yet"`.
+- **Point system / leaderboard fix (2026-05-22):** The `adjust_points` RPC references a `bonus_awarded` column on `grievances` that didn't exist in the DB. This caused `Failed to update status` errors in the admin dashboard and prevented the leaderboard from updating (`profiles.points` never changed on status changes). Fix: run `ALTER TABLE grievances ADD COLUMN IF NOT EXISTS bonus_awarded smallint NOT NULL DEFAULT 0;` in Supabase SQL editor.
 - OpenCode skill `supabase-postgres-best-practices` is locked in.

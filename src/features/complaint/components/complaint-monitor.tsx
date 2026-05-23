@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   AlertTriangle,
   ChevronLeft,
@@ -12,12 +12,15 @@ import {
   Download,
   FileSpreadsheet,
   FileDown,
+  Link2,
+  X,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { grievanceKeys } from '@/features/auth/grievance/api/use-grievances';
 import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
+import { profileKeys } from '@/features/gamification/api/use-user-profile';
 import { ImageLightbox } from '@/features/auth/grievance/components/image-lightbox';
 import {
   URGENCY_BADGE,
@@ -28,7 +31,11 @@ import {
   URGENCY_LABELS,
 } from '@/features/complaint/constants';
 import type { Complaint, ComplaintUrgency, ComplaintStatus } from '@/features/complaint/types';
-import { awardPointsForStatus } from '@/features/complaint/utils/award-points';
+import {
+  awardPointsForStatus,
+  revokeChildPoints,
+  restoreMasterPoints,
+} from '@/features/complaint/utils/award-points';
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
 
@@ -130,6 +137,10 @@ export const ComplaintMonitor = () => {
   const [urgencyFilter, setUrgencyFilter] = useState<ComplaintUrgency | 'all'>('all');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [hideDuplicates, setHideDuplicates] = useState(true);
+  const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
+  const [unlinkTargetId, setUnlinkTargetId] = useState<string | null>(null);
+  const [previewComplaint, setPreviewComplaint] = useState<Complaint | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -180,11 +191,25 @@ export const ComplaintMonitor = () => {
       updates.resolved_at = new Date().toISOString();
     }
 
+    const childUpdates: Record<string, unknown> = { status: newStatus };
+    if (newStatus === 'resolved') {
+      childUpdates.resolved_at = new Date().toISOString();
+    }
+
+    // Capture children before optimistic update
+    const children = !current.parent_id ? complaints.filter((c) => c.parent_id === id) : [];
+
+    // Optimistic update for master and all children
     setComplaints((prev) =>
-      prev.map((c) => (c.id === id ? ({ ...c, ...updates } as Complaint) : c)),
+      prev.map((c) => {
+        if (c.id === id) return { ...c, ...updates } as Complaint;
+        if (c.parent_id === id) return { ...c, ...childUpdates } as Complaint;
+        return c;
+      }),
     );
 
     try {
+      // Update master complaint
       const { error: supabaseError } = await supabase
         .from('grievances')
         .update(updates)
@@ -192,9 +217,28 @@ export const ComplaintMonitor = () => {
 
       if (supabaseError) throw supabaseError;
 
+      // Award points for master (master rules)
       await awardPointsForStatus(current.reporter_id, id, current.status, newStatus);
+
+      // Cascade to children
+      if (children.length > 0) {
+        const { error: childrenError } = await supabase
+          .from('grievances')
+          .update(childUpdates)
+          .eq('parent_id', id);
+
+        if (childrenError) throw childrenError;
+
+        await Promise.all(
+          children.map((child) =>
+            awardPointsForStatus(child.reporter_id, child.id, child.status, newStatus, true),
+          ),
+        );
+      }
+
       queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
       queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
+      queryClient.invalidateQueries({ queryKey: profileKeys.current() });
 
       // Silently refresh to ensure DB consistency
       const { data: refreshed, error: refreshError } = await supabase
@@ -212,6 +256,84 @@ export const ComplaintMonitor = () => {
           : ((err as { message?: string })?.message ?? 'Unknown error');
       alert(`Failed to update status: ${message}`);
     }
+  };
+
+  const handleMerge = async (complaintId: string, masterId: string) => {
+    const child = complaints.find((c) => c.id === complaintId);
+    if (!child) return;
+
+    // If child has children, reassign them to the new master
+    const grandchildren = childrenMap.get(complaintId);
+
+    const { error } = await supabase
+      .from('grievances')
+      .update({ parent_id: masterId })
+      .eq('id', complaintId);
+
+    if (error) {
+      alert(`Failed to link complaint: ${error.message}`);
+      return;
+    }
+
+    // Reassign children of the merged complaint to the new master
+    if (grandchildren && grandchildren.length > 0) {
+      const { error: gcError } = await supabase
+        .from('grievances')
+        .update({ parent_id: masterId })
+        .in(
+          'id',
+          grandchildren.map((g) => g.id),
+        );
+      if (gcError) console.error('Failed to reassign merged children:', gcError);
+    }
+
+    // Revoke child's points when merged
+    try {
+      await revokeChildPoints(child.reporter_id, child.id, child.bonus_awarded);
+    } catch {
+      // non-blocking
+    }
+
+    setMergeTargetId(null);
+    const { data: refreshed } = await supabase
+      .from('grievances')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (refreshed) setComplaints(refreshed);
+  };
+
+  const handleUnlink = async (complaintId: string) => {
+    const child = complaints.find((c) => c.id === complaintId);
+    if (!child) return;
+
+    setUnlinkTargetId(null);
+
+    const { error } = await supabase
+      .from('grievances')
+      .update({ parent_id: null })
+      .eq('id', complaintId);
+
+    if (error) {
+      alert(`Failed to unlink complaint: ${error.message}`);
+      return;
+    }
+
+    // Restore child's points as master
+    try {
+      await restoreMasterPoints(child.reporter_id, child.id, child.status, child.bonus_awarded);
+    } catch {
+      // non-blocking
+    }
+
+    queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
+    queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
+    queryClient.invalidateQueries({ queryKey: profileKeys.current() });
+
+    const { data: refreshed } = await supabase
+      .from('grievances')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (refreshed) setComplaints(refreshed);
   };
 
   const handleUrgencyChange = async (id: string, newUrgency: ComplaintUrgency) => {
@@ -246,7 +368,23 @@ export const ComplaintMonitor = () => {
       if (activeTab === 'critical') return c.urgency === 'critical';
       return c.status === activeTab;
     })
-    .filter((c) => urgencyFilter === 'all' || c.urgency === urgencyFilter);
+    .filter((c) => urgencyFilter === 'all' || c.urgency === urgencyFilter)
+    .filter((c) => !hideDuplicates || c.parent_id === null);
+
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const childrenMap = useMemo(() => {
+    const map = new Map<string, Complaint[]>();
+    for (const c of complaints) {
+      if (c.parent_id) {
+        const existing = map.get(c.parent_id);
+        if (existing) existing.push(c);
+        else map.set(c.parent_id, [c]);
+      }
+    }
+    return map;
+  }, [complaints]);
+
+  const masterOptions = complaints.filter((c) => c.parent_id === null);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -494,11 +632,30 @@ export const ComplaintMonitor = () => {
             <option value="low">Low</option>
           </select>
         </div>
-        {activeTab !== 'total' || urgencyFilter !== 'all' ? (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold tracking-wide uppercase" style={{ color: '#72796e' }}>
+            Hide Duplicates:
+          </span>
+          <button
+            type="button"
+            onClick={() => setHideDuplicates(!hideDuplicates)}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              hideDuplicates ? 'bg-green-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                hideDuplicates ? 'translate-x-[18px]' : 'translate-x-[2px]'
+              }`}
+            />
+          </button>
+        </div>
+        {activeTab !== 'total' || urgencyFilter !== 'all' || !hideDuplicates ? (
           <button
             onClick={() => {
               setActiveTab('total');
               setUrgencyFilter('all');
+              setHideDuplicates(true);
               setCurrentPage(1);
             }}
             className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:scale-105"
@@ -557,12 +714,18 @@ export const ComplaintMonitor = () => {
                 >
                   Image
                 </th>
+                <th
+                  className="px-4 py-3.5 text-xs font-bold tracking-wide uppercase"
+                  style={{ color: '#72796e' }}
+                >
+                  Link
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-16 text-center">
+                  <td colSpan={7} className="px-4 py-16 text-center">
                     <div
                       className="flex flex-col items-center justify-center gap-2"
                       style={{ color: '#72796e' }}
@@ -575,7 +738,7 @@ export const ComplaintMonitor = () => {
               ) : paginated.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-16 text-center text-sm"
                     style={{ color: '#c2c9bb' }}
                   >
@@ -680,16 +843,72 @@ export const ComplaintMonitor = () => {
                     </td>
                     <td className="px-4 py-3">
                       {complaint.image_url ? (
-                        <ImageLightbox
+                        <img
                           src={complaint.image_url}
                           alt={complaint.title}
-                          className="h-14 w-28 rounded-lg object-cover shadow-sm"
+                          onClick={() => setPreviewComplaint(complaint)}
+                          className="h-14 w-28 cursor-pointer rounded-lg object-cover shadow-sm transition-all hover:scale-105 hover:ring-2 hover:ring-gray-400"
                         />
                       ) : (
                         <span className="text-xs" style={{ color: '#c2c9bb' }}>
                           —
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const children = childrenMap.get(complaint.id);
+                        if (children && children.length > 0) {
+                          return (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold"
+                              style={{ color: '#92400e' }}
+                              title={children.map((c) => c.title).join(', ')}
+                            >
+                              <Link2 className="h-3 w-3" />
+                              {children.length}
+                            </span>
+                          );
+                        }
+                        if (complaint.parent_id) {
+                          return (
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className="text-[10px] font-medium"
+                                style={{ color: '#72796e' }}
+                              >
+                                Linked
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setUnlinkTargetId(complaint.id)}
+                                className="rounded p-0.5 text-red-400 transition-all hover:bg-red-50 hover:text-red-600"
+                                title="Unlink from parent"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          );
+                        }
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setMergeTargetId(complaint.id)}
+                            className={`rounded-lg p-1.5 transition-all hover:scale-110 hover:bg-gray-100 ${
+                              complaint.status === 'resolved' ? 'cursor-not-allowed opacity-30' : ''
+                            }`}
+                            title={
+                              complaint.status === 'resolved'
+                                ? 'Resolved complaints cannot be linked'
+                                : 'Link as duplicate of a master complaint'
+                            }
+                            style={{ color: '#72796e' }}
+                            disabled={complaint.status === 'resolved'}
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </button>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))
@@ -712,6 +931,331 @@ export const ComplaintMonitor = () => {
           />
         </div>
       </div>
+
+      {mergeTargetId &&
+        (() => {
+          const target = complaints.find((c) => c.id === mergeTargetId);
+          const statusOrder = ['pending', 'in-progress', 'resolved'];
+          const targetStatusIndex = statusOrder.indexOf(target?.status ?? 'pending');
+          const masters = masterOptions.filter(
+            (m) => m.id !== mergeTargetId && statusOrder.indexOf(m.status) >= targetStatusIndex,
+          );
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              onClick={() => setMergeTargetId(null)}
+            >
+              <div
+                className="mx-4 w-full max-w-md rounded-xl border bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+                style={{ borderColor: '#e5e2e1' }}
+              >
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-bold" style={{ color: '#1c1b1b' }}>
+                    Link Complaint as Duplicate
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setMergeTargetId(null)}
+                    className="rounded-lg p-1 transition-all hover:bg-gray-100"
+                  >
+                    <X className="h-4 w-4" style={{ color: '#72796e' }} />
+                  </button>
+                </div>
+                {target && (
+                  <p className="mb-3 text-xs" style={{ color: '#72796e' }}>
+                    Linking:{' '}
+                    <span className="font-semibold" style={{ color: '#42493e' }}>
+                      {target.title}
+                    </span>
+                  </p>
+                )}
+                {masters.length === 0 ? (
+                  <p className="py-4 text-center text-xs" style={{ color: '#c2c9bb' }}>
+                    No eligible master complaints found
+                  </p>
+                ) : (
+                  <div className="max-h-80 space-y-2 overflow-y-auto">
+                    {masters.map((master) => (
+                      <button
+                        key={master.id}
+                        type="button"
+                        onClick={() => handleMerge(mergeTargetId, master.id)}
+                        className="flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left text-xs transition-all hover:bg-gray-50"
+                        style={{ borderColor: '#e5e2e1', color: '#42493e' }}
+                      >
+                        {master.image_url ? (
+                          <img
+                            src={master.image_url}
+                            alt=""
+                            className="h-14 w-20 shrink-0 rounded-md object-cover shadow-sm"
+                          />
+                        ) : (
+                          <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-md bg-gray-100">
+                            <span className="text-[10px]" style={{ color: '#c2c9bb' }}>
+                              No img
+                            </span>
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium" style={{ color: '#1c1b1b' }}>
+                            {master.title}
+                          </p>
+                          <p
+                            className="mt-0.5 line-clamp-2 text-[11px]"
+                            style={{ color: '#72796e' }}
+                          >
+                            {master.description}
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                              style={{
+                                backgroundColor: CATEGORY_COLORS[master.category]
+                                  ? `${CATEGORY_COLORS[master.category]}1a`
+                                  : '#f3f4f6',
+                                color: CATEGORY_COLORS[master.category] || '#6b7280',
+                              }}
+                            >
+                              {CATEGORY_LABELS[master.category] || master.category}
+                            </span>
+                            <span
+                              className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                              style={{
+                                backgroundColor: URGENCY_BADGE[master.urgency]?.bg || '#f3f4f6',
+                                color: URGENCY_BADGE[master.urgency]?.text || '#6b7280',
+                              }}
+                            >
+                              {URGENCY_LABELS[master.urgency]}
+                            </span>
+                            <span
+                              className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase"
+                              style={{
+                                backgroundColor: STATUS_BADGE[master.status]?.bg || '#f3f4f6',
+                                color: STATUS_BADGE[master.status]?.text || '#6b7280',
+                              }}
+                            >
+                              {STATUS_LABELS[master.status]}
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      {unlinkTargetId &&
+        (() => {
+          const child = complaints.find((c) => c.id === unlinkTargetId);
+          const parent = child ? complaints.find((c) => c.id === child.parent_id) : null;
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              onClick={() => setUnlinkTargetId(null)}
+            >
+              <div
+                className="mx-4 w-full max-w-sm rounded-xl border bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+                style={{ borderColor: '#e5e2e1' }}
+              >
+                <h3 className="mb-2 text-sm font-bold" style={{ color: '#1c1b1b' }}>
+                  Unlink Complaint?
+                </h3>
+                <p className="mb-1 text-xs" style={{ color: '#72796e' }}>
+                  This will unlink{' '}
+                  <span className="font-semibold" style={{ color: '#42493e' }}>
+                    {child?.title}
+                  </span>{' '}
+                  from its parent
+                  {parent && (
+                    <>
+                      {' '}
+                      (
+                      <span className="font-semibold" style={{ color: '#42493e' }}>
+                        {parent.title}
+                      </span>
+                      )
+                    </>
+                  )}
+                  .
+                </p>
+                <p className="mb-4 text-xs" style={{ color: '#c2c9bb' }}>
+                  Points will be restored as if it were an independent complaint.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUnlinkTargetId(null)}
+                    className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:bg-gray-100"
+                    style={{ color: '#72796e' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUnlink(unlinkTargetId)}
+                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-red-700"
+                  >
+                    Unlink
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      {previewComplaint &&
+        (() => {
+          const children = childrenMap.get(previewComplaint.id);
+          const parent = previewComplaint.parent_id
+            ? complaints.find((c) => c.id === previewComplaint.parent_id)
+            : null;
+          const parentChildren = parent ? childrenMap.get(parent.id) : null;
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+              onClick={() => setPreviewComplaint(null)}
+            >
+              <div
+                className="mx-4 w-full max-w-lg rounded-xl border bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+                style={{ borderColor: '#e5e2e1' }}
+              >
+                <div className="mb-4 flex items-start justify-between">
+                  <h3 className="text-sm font-bold" style={{ color: '#1c1b1b' }}>
+                    Complaint Details
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewComplaint(null)}
+                    className="rounded-lg p-1 transition-all hover:bg-gray-100"
+                  >
+                    <X className="h-4 w-4" style={{ color: '#72796e' }} />
+                  </button>
+                </div>
+                {previewComplaint.image_url && (
+                  <div className="mb-4 overflow-hidden rounded-lg">
+                    <ImageLightbox
+                      src={previewComplaint.image_url}
+                      alt={previewComplaint.title}
+                      className="max-h-64 w-full rounded-lg object-cover"
+                    />
+                  </div>
+                )}
+                <div className="space-y-2 text-xs">
+                  <p className="text-sm font-bold" style={{ color: '#1c1b1b' }}>
+                    {previewComplaint.title}
+                  </p>
+                  <p style={{ color: '#72796e' }}>{previewComplaint.description}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                      style={{
+                        backgroundColor: CATEGORY_COLORS[previewComplaint.category]
+                          ? `${CATEGORY_COLORS[previewComplaint.category]}1a`
+                          : '#f3f4f6',
+                        color: CATEGORY_COLORS[previewComplaint.category] || '#6b7280',
+                      }}
+                    >
+                      {CATEGORY_LABELS[previewComplaint.category] || previewComplaint.category}
+                    </span>
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                      style={{
+                        backgroundColor: URGENCY_BADGE[previewComplaint.urgency]?.bg || '#f3f4f6',
+                        color: URGENCY_BADGE[previewComplaint.urgency]?.text || '#6b7280',
+                      }}
+                    >
+                      {URGENCY_LABELS[previewComplaint.urgency]}
+                    </span>
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                      style={{
+                        backgroundColor: STATUS_BADGE[previewComplaint.status]?.bg || '#f3f4f6',
+                        color: STATUS_BADGE[previewComplaint.status]?.text || '#6b7280',
+                      }}
+                    >
+                      {STATUS_LABELS[previewComplaint.status]}
+                    </span>
+                  </div>
+                  {previewComplaint.location && (
+                    <p style={{ color: '#72796e' }}>
+                      <span className="font-medium">Location:</span> {previewComplaint.location}
+                    </p>
+                  )}
+                </div>
+                {parent && (
+                  <div className="mt-4 border-t pt-3" style={{ borderColor: '#e5e2e1' }}>
+                    <p className="mb-2 text-xs font-bold" style={{ color: '#92400e' }}>
+                      <Link2 className="mr-1 inline h-3 w-3" />
+                      Linked to Parent
+                    </p>
+                    <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-2">
+                      {parent.image_url && (
+                        <img
+                          src={parent.image_url}
+                          alt=""
+                          className="h-10 w-16 shrink-0 rounded-md object-cover"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium" style={{ color: '#92400e' }}>
+                          {parent.title}
+                        </p>
+                        <p className="mt-0.5 truncate text-[11px]" style={{ color: '#72796e' }}>
+                          {parent.description}
+                        </p>
+                      </div>
+                    </div>
+                    {parentChildren && parentChildren.length > 1 && (
+                      <p className="mt-1 text-[10px]" style={{ color: '#72796e' }}>
+                        Parent has {parentChildren.length} linked duplicate
+                        {parentChildren.length > 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {children && children.length > 0 && (
+                  <div className="mt-4 border-t pt-3" style={{ borderColor: '#e5e2e1' }}>
+                    <p className="mb-2 text-xs font-bold" style={{ color: '#42493e' }}>
+                      <Link2 className="mr-1 inline h-3 w-3" />
+                      Merged Complaints ({children.length})
+                    </p>
+                    <div className="max-h-40 space-y-2 overflow-y-auto">
+                      {children.map((child) => (
+                        <div
+                          key={child.id}
+                          className="flex items-start gap-2 rounded-lg bg-gray-50 p-2"
+                        >
+                          {child.image_url && (
+                            <img
+                              src={child.image_url}
+                              alt=""
+                              className="h-10 w-16 shrink-0 rounded-md object-cover"
+                            />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="truncate text-xs font-medium"
+                              style={{ color: '#42493e' }}
+                            >
+                              {child.title}
+                            </p>
+                            <p className="truncate text-[11px]" style={{ color: '#72796e' }}>
+                              {child.description}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 };

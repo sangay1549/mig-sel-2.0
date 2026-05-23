@@ -18,6 +18,8 @@ interface GrievanceRow {
   resolved_image_url?: string;
   created_at: string;
   resolved_at?: string;
+  parent_id: string | null;
+  reporter_id: string;
 }
 
 export const useGrievances = () => {
