@@ -21,5 +21,8 @@ export type WasteRecord = {
   unit: string;
   reportedAt: string;
   collectedAt: string | null;
+  deletedAt: string | null;
+  deletionReason: string | null;
+  editCount: number;
   notes: string | null;
 };

@@ -9,6 +9,7 @@ export const useUpdateWasteRecord = () => {
   return useMutation({
     mutationFn: async (record: WasteRecord) => {
       const dbPayload: Record<string, unknown> = {};
+
       if (record.category) dbPayload.category = record.category;
       if (record.quantity !== undefined) dbPayload.quantity = Number(record.quantity);
       if (record.unit) dbPayload.unit = record.unit;

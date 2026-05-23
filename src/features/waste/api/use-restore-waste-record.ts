@@ -3,14 +3,14 @@ import { supabase } from '@/lib/supabase';
 import { wasteKeys } from './use-waste-records';
 import { archivedWasteKeys } from './use-archived-waste-records';
 
-export const useDeleteWasteRecord = () => {
+export const useRestoreWasteRecord = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+    mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('waste_records')
-        .update({ deleted_at: new Date().toISOString(), deletion_reason: reason })
+        .update({ deleted_at: null, deletion_reason: null })
         .eq('id', id);
 
       if (error) throw error;

@@ -28,19 +28,19 @@ const mapRecord = (row: RawRecord): WasteRecord => ({
   notes: row.notes,
 });
 
-export const wasteKeys = {
-  all: ['waste-records'] as const,
+export const archivedWasteKeys = {
+  all: ['archived-waste-records'] as const,
 };
 
-export const useWasteRecords = () => {
+export const useArchivedWasteRecords = () => {
   return useQuery({
-    queryKey: wasteKeys.all,
+    queryKey: archivedWasteKeys.all,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('waste_records')
         .select('*')
-        .is('deleted_at', null)
-        .order('reported_at', { ascending: false });
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false });
 
       if (error) throw error;
       return (data as RawRecord[]).map(mapRecord);
