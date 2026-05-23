@@ -50,7 +50,7 @@ export const ShopPage = () => {
         </div>
 
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg">
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
             <ShoppingBag className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Points Shop</h1>
@@ -74,21 +74,21 @@ export const ShopPage = () => {
                   </div>
                 )}
                 <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50">
-                    <Icon className="h-6 w-6 text-purple-600" />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-50">
+                    <Icon className="h-6 w-6 text-green-600" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base font-bold text-gray-900">{item.title}</h3>
                     <p className="mt-0.5 text-sm text-gray-500">{item.description}</p>
                     <div className="mt-3 flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
                         <ShoppingBag className="h-3 w-3" />
                         {item.cost} points
                       </span>
                       <Button
                         disabled={item.comingSoon}
                         size="sm"
-                        className="bg-purple-600 text-xs font-bold text-white hover:bg-purple-700 disabled:opacity-50"
+                        className="bg-green-600 text-xs font-bold text-white hover:bg-green-700 disabled:opacity-50"
                       >
                         {item.comingSoon ? 'Unavailable' : 'Redeem'}
                       </Button>

@@ -8,7 +8,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  LabelList,
 } from 'recharts';
 import { Loader2 } from 'lucide-react';
 
@@ -82,20 +81,6 @@ function getQuarterRange(year: number, quarter: number): { start: Date; end: Dat
   return { start, end };
 }
 
-function getDateRange(period: Period): { start: Date; end: Date } {
-  const now = new Date();
-  const end = new Date(now);
-  const start = new Date(now);
-
-  switch (period) {
-    case 'yearly':
-      start.setFullYear(start.getFullYear() - 1);
-      break;
-  }
-
-  return { start, end };
-}
-
 type BarItem = {
   category: string;
   quantity: number;
@@ -137,36 +122,70 @@ const PERIOD_LABELS: Record<Period, string> = {
   yearly: 'Yearly',
 };
 
-const CARD_STYLES: Record<Period, { className: string; dot: string }> = {
-  weekly: { className: 'border-t-4 border-t-chart-1', dot: 'bg-chart-1' },
-  monthly: { className: 'border-l-4 border-l-chart-2', dot: 'bg-chart-2' },
-  quarterly: { className: 'border-b-4 border-b-chart-4', dot: 'bg-chart-4' },
-  yearly: { className: 'border-r-4 border-r-chart-5', dot: 'bg-chart-5' },
+const CARD_ACCENT: Record<Period, string> = {
+  weekly: '',
+  monthly: '',
+  quarterly: '',
+  yearly: '',
 };
+
+function CustomTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: BarItem }[];
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-popover/95 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-sm">
+      <div className="flex items-center gap-2">
+        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: d.color }} />
+        <span className="text-foreground text-sm font-semibold">{d.category}</span>
+      </div>
+      <p className="text-muted-foreground mt-1 text-sm">
+        <span className="text-foreground font-bold">{d.quantity}</span> kg
+        <span className="text-muted-foreground ml-2">({d.pct}%)</span>
+      </p>
+    </div>
+  );
+}
+
+function GradientDefs({ data }: { data: BarItem[] }) {
+  return (
+    <defs>
+      {data.map((entry, i) => (
+        <linearGradient key={i} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={entry.color} stopOpacity={0.9} />
+          <stop offset="100%" stopColor={entry.color} stopOpacity={0.4} />
+        </linearGradient>
+      ))}
+    </defs>
+  );
+}
 
 function WasteBarChart({
   data,
   title,
   controls,
-  accentDot,
   className,
 }: {
   data: BarItem[];
   title: string;
   controls?: React.ReactNode;
-  accentDot?: string;
   className?: string;
 }) {
   return (
-    <Card className={cn('relative overflow-hidden', className)}>
-      <CardHeader>
+    <Card
+      className={cn(
+        'group overflow-hidden shadow-md transition-all duration-200 hover:shadow-lg',
+        className,
+      )}
+    >
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            {accentDot && <span className={cn('h-2 w-2 rounded-full', accentDot)} />}
-            <CardTitle className="text-muted-foreground text-sm font-bold tracking-wide uppercase">
-              {title}
-            </CardTitle>
-          </div>
+          <CardTitle className="text-foreground text-base font-semibold">{title}</CardTitle>
           {controls}
         </div>
       </CardHeader>
@@ -177,63 +196,61 @@ function WasteBarChart({
           </div>
         </CardContent>
       ) : (
-        <CardContent>
+        <CardContent className="pt-4">
           <ResponsiveContainer width="100%" height={320}>
             <BarChart
               data={data}
-              margin={{ left: 8, right: 48, top: 12, bottom: 24 }}
-              barCategoryGap="25%"
+              margin={{ left: -8, right: 16, top: 12, bottom: 8 }}
+              barCategoryGap="30%"
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0eded" vertical={false} />
+              <GradientDefs data={data} />
+              <CartesianGrid
+                strokeDasharray="4 4"
+                stroke="hsl(var(--border))"
+                vertical={false}
+                strokeOpacity={0.5}
+              />
               <XAxis
                 type="category"
                 dataKey="category"
-                tick={{ fontSize: 9, fill: '#72796e' }}
-                axisLine={{ stroke: '#e5e2e1' }}
+                tick={{
+                  fontSize: 11,
+                  fill: 'hsl(var(--muted-foreground))',
+                  fontWeight: 500,
+                }}
+                axisLine={false}
                 tickLine={false}
-                angle={-20}
-                textAnchor="end"
-                height={50}
+                tickMargin={8}
+                minTickGap={8}
               />
               <YAxis
                 type="number"
-                tick={{ fontSize: 10, fill: '#72796e' }}
-                axisLine={{ stroke: '#e5e2e1' }}
+                tick={{
+                  fontSize: 11,
+                  fill: 'hsl(var(--muted-foreground))',
+                  fontWeight: 500,
+                }}
+                axisLine={false}
                 tickLine={false}
                 unit=" kg"
-                width={40}
+                width={48}
+                tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))}
               />
               <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload || payload.length === 0) return null;
-                  const d = payload[0].payload;
-                  return (
-                    <div className="bg-card/95 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-sm">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: d.color }}
-                        />
-                        <span className="text-foreground text-sm font-semibold">{d.category}</span>
-                      </div>
-                      <p className="text-muted-foreground/70 mt-1 text-xs">
-                        <span className="text-primary font-bold">{d.quantity}</span> kg
-                        <span className="ml-2">({d.pct}%)</span>
-                      </p>
-                    </div>
-                  );
-                }}
+                content={<CustomTooltip />}
+                cursor={{ fill: 'hsl(var(--muted-foreground))', fillOpacity: 0.06, radius: 6 }}
               />
-              <Bar dataKey="quantity" radius={[6, 6, 0, 0]} maxBarSize={36}>
-                {data.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} />
+              <Bar
+                dataKey="quantity"
+                radius={[8, 8, 0, 0]}
+                maxBarSize={48}
+                animationBegin={0}
+                animationDuration={600}
+                animationEasing="ease-out"
+              >
+                {data.map((_, index) => (
+                  <Cell key={index} fill={`url(#grad-${index})`} />
                 ))}
-                <LabelList
-                  dataKey="quantity"
-                  position="top"
-                  formatter={(val) => `${Number(val ?? 0).toFixed(1)}`}
-                  style={{ fontSize: 9, fill: '#72796e', fontWeight: 600 }}
-                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -252,10 +269,16 @@ export const WasteCharts = () => {
   const [selectedWeek, setSelectedWeek] = useState<number>(getISOWeekNumber(now));
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth());
   const [selectedQuarter, setSelectedQuarter] = useState<number>(Math.floor(now.getMonth() / 3));
+  const [weeklyMonth, setWeeklyMonth] = useState<number>(now.getMonth());
 
   const yearFilteredRecords = useMemo(
     () => records.filter((r) => new Date(r.reportedAt).getFullYear() === Number(selectedYear)),
     [records, selectedYear],
+  );
+
+  const weeksInWeeklyMonth = useMemo(
+    () => getWeeksInMonth(Number(selectedYear), weeklyMonth),
+    [selectedYear, weeklyMonth],
   );
 
   const periodDataWeekly = useMemo(() => {
@@ -273,10 +296,17 @@ export const WasteCharts = () => {
     return buildBarDataForRange(yearFilteredRecords, qRange.start, qRange.end);
   }, [yearFilteredRecords, selectedYear, selectedQuarter]);
 
+  const yRange = useMemo(() => {
+    const now = new Date();
+    const end = new Date(now);
+    const start = new Date(now);
+    start.setFullYear(start.getFullYear() - 1);
+    return { start, end };
+  }, []);
+
   const periodDataYearly = useMemo(() => {
-    const yRange = getDateRange('yearly');
     return buildBarDataForRange(yearFilteredRecords, yRange.start, yRange.end);
-  }, [yearFilteredRecords]);
+  }, [yearFilteredRecords, yRange]);
 
   const periodData: Record<Period, BarItem[]> = {
     weekly: periodDataWeekly,
@@ -285,15 +315,10 @@ export const WasteCharts = () => {
     yearly: periodDataYearly,
   };
 
-  const weeksInMonth = useMemo(
-    () => getWeeksInMonth(Number(selectedYear), selectedMonth),
-    [selectedYear, selectedMonth],
-  );
-
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground/70 flex flex-col items-center gap-2">
+        <div className="text-muted-foreground flex flex-col items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin" />
           <p className="text-sm">Loading chart data...</p>
         </div>
@@ -306,41 +331,65 @@ export const WasteCharts = () => {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-foreground text-lg font-semibold">Waste Management</h2>
-          <p className="text-muted-foreground/60 text-sm">
+          <p className="text-muted-foreground text-sm">
             Waste quantity by category across different periods
           </p>
         </div>
-        <select
-          value={selectedYear}
-          onChange={(e) => {
-            setSelectedYear(e.target.value);
-            setSelectedWeek(getWeeksInMonth(Number(e.target.value), selectedMonth)[0]);
-          }}
-          className="border-muted bg-background text-foreground focus:border-ring focus:ring-ring/30 h-10 rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
-        >
-          {YEARS.map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <label htmlFor="year-select" className="text-muted-foreground text-sm whitespace-nowrap">
+            Year
+          </label>
+          <select
+            id="year-select"
+            value={selectedYear}
+            onChange={(e) => {
+              setSelectedYear(e.target.value);
+              setSelectedWeek(getWeeksInMonth(Number(e.target.value), selectedMonth)[0]);
+            }}
+            className="border-input bg-background text-foreground focus:border-ring focus:ring-ring/30 h-9 rounded-lg border px-3 text-sm outline-none focus:ring-2"
+          >
+            {YEARS.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6">
         {PERIODS.map((p) => {
           let controls: React.ReactNode = null;
           if (p === 'weekly') {
             controls = (
-              <select
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(Number(e.target.value))}
-                className="border-muted bg-background text-foreground focus:border-ring focus:ring-ring/30 h-8 rounded-md border px-2 py-1 text-xs outline-none focus:ring-2"
-              >
-                {weeksInMonth.map((w, i) => (
-                  <option key={w} value={w}>
-                    Week {i + 1}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={weeklyMonth}
+                  onChange={(e) => {
+                    setWeeklyMonth(Number(e.target.value));
+                    setSelectedWeek(
+                      getWeeksInMonth(Number(selectedYear), Number(e.target.value))[0],
+                    );
+                  }}
+                  className="border-input bg-background text-foreground focus:border-ring focus:ring-ring/30 h-8 rounded-md border px-2 text-sm outline-none focus:ring-2"
+                >
+                  {MONTH_LABELS.map((label, i) => (
+                    <option key={i} value={i}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                  className="border-input bg-background text-foreground focus:border-ring focus:ring-ring/30 h-8 rounded-md border px-2 text-sm outline-none focus:ring-2"
+                >
+                  {weeksInWeeklyMonth.map((w, i) => (
+                    <option key={w} value={w}>
+                      Week {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
             );
           } else if (p === 'monthly') {
             controls = (
@@ -350,7 +399,7 @@ export const WasteCharts = () => {
                   setSelectedMonth(Number(e.target.value));
                   setSelectedWeek(getWeeksInMonth(Number(selectedYear), Number(e.target.value))[0]);
                 }}
-                className="border-muted bg-background text-foreground focus:border-ring focus:ring-ring/30 h-8 rounded-md border px-2 py-1 text-xs outline-none focus:ring-2"
+                className="border-input bg-background text-foreground focus:border-ring focus:ring-ring/30 h-8 rounded-md border px-2 text-sm outline-none focus:ring-2"
               >
                 {MONTH_LABELS.map((label, i) => (
                   <option key={i} value={i}>
@@ -364,7 +413,7 @@ export const WasteCharts = () => {
               <select
                 value={selectedQuarter}
                 onChange={(e) => setSelectedQuarter(Number(e.target.value))}
-                className="border-muted bg-background text-foreground focus:border-ring focus:ring-ring/30 h-8 rounded-md border px-2 py-1 text-xs outline-none focus:ring-2"
+                className="border-input bg-background text-foreground focus:border-ring focus:ring-ring/30 h-8 rounded-md border px-2 text-sm outline-none focus:ring-2"
               >
                 {QUARTER_LABELS.map((label, i) => (
                   <option key={i} value={i}>
@@ -380,8 +429,7 @@ export const WasteCharts = () => {
               data={periodData[p]}
               title={PERIOD_LABELS[p]}
               controls={controls}
-              className={CARD_STYLES[p].className}
-              accentDot={CARD_STYLES[p].dot}
+              className={CARD_ACCENT[p]}
             />
           );
         })}

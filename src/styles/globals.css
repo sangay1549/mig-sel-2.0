@@ -7,7 +7,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #fcf9f8;
+  --background: #f1f5f9;
   --foreground: #1c1b1b;
   --card: #ffffff;
   --card-foreground: #1c1b1b;
@@ -36,31 +36,31 @@
 }
 
 .dark {
-  --background: #1c1b1b;
-  --foreground: #e5e2e1;
-  --card: #313030;
-  --card-foreground: #e5e2e1;
-  --popover: #313030;
-  --popover-foreground: #e5e2e1;
-  --primary: #a1d494;
-  --primary-foreground: #002201;
-  --secondary: #3e4a38;
-  --secondary-foreground: #d9e7ce;
-  --muted: #313030;
-  --muted-foreground: #72796e;
-  --accent: #313030;
-  --accent-foreground: #e5e2e1;
+  --background: #0f1214;
+  --foreground: #e8eaed;
+  --card: #1a1d21;
+  --card-foreground: #e8eaed;
+  --popover: #1a1d21;
+  --popover-foreground: #e8eaed;
+  --primary: #6dde76;
+  --primary-foreground: #002a04;
+  --secondary: #2a3d2b;
+  --secondary-foreground: #c6ecc0;
+  --muted: #25282c;
+  --muted-foreground: #8b8f96;
+  --accent: #25282c;
+  --accent-foreground: #e8eaed;
   --destructive: #ffdad6;
   --destructive-foreground: #93000a;
   --destructive-ring: #ba1a1a;
-  --border: #42493e;
-  --input: #42493e;
-  --ring: #a1d494;
-  --chart-1: #a1d494;
-  --chart-2: #55624f;
-  --chart-3: #3a3936;
-  --chart-4: #2d5a27;
-  --chart-5: #154212;
+  --border: #2e3136;
+  --input: #2e3136;
+  --ring: #6dde76;
+  --chart-1: #6dde76;
+  --chart-2: #5c8a5a;
+  --chart-3: #3a6b3a;
+  --chart-4: #1a4f1a;
+  --chart-5: #0d2f0d;
 }
 
 @theme inline {
@@ -107,6 +107,33 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background: #c2c9bb;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #72796e;
+  }
+
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  main {
+    scroll-behavior: smooth;
   }
 }
 

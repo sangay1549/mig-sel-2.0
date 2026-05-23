@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ClipboardList, ChartPie, Table2, Menu, Recycle, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { DashboardSidebar, type NavView } from '@/components/layout/dashboard-sidebar';
 import { WasteRecord } from '@/features/waste/components/waste-record';
 import { WasteCharts } from '@/features/waste/components/waste-charts';
@@ -33,7 +34,12 @@ export const AdminPage = () => {
   const IconComponent = iconMap[activeView];
 
   return (
-    <div className="bg-muted flex min-h-screen">
+    <div className="relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100/80">
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-purple-200/20 blur-3xl" />
+        <div className="absolute -right-32 -bottom-32 h-96 w-96 rounded-full bg-emerald-200/20 blur-3xl" />
+        <div className="absolute top-1/2 left-1/3 h-64 w-64 -translate-y-1/2 rounded-full bg-blue-200/10 blur-3xl" />
+      </div>
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
@@ -52,7 +58,7 @@ export const AdminPage = () => {
       />
 
       <div className="flex flex-1 flex-col md:ml-60">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-white px-4 md:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-white/20 bg-white/70 px-4 backdrop-blur-xl md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
             className="hover:bg-accent rounded-lg p-1.5 transition-all"
@@ -68,18 +74,21 @@ export const AdminPage = () => {
         </header>
 
         <main className="flex-1 overflow-auto">
-          <div className="mx-auto px-4 py-6 sm:px-6 lg:px-8" style={{ maxWidth: '1200px' }}>
+          <div className="mx-auto px-4 py-8 sm:px-6 lg:px-8" style={{ maxWidth: '1200px' }}>
             {activeView !== 'complaint' && (
-              <div className="mb-8 hidden md:block">
-                <div className="flex items-center gap-3">
-                  <div className="bg-primary flex h-10 w-10 items-center justify-center rounded-lg">
-                    <IconComponent className="text-primary-foreground h-5 w-5" />
+              <div className="animate-in fade-in-0 slide-in-from-top-2 mb-8 hidden duration-500 [animation-delay:100ms] md:block">
+                <div className="flex items-center gap-4">
+                  <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-xl">
+                    <IconComponent className="text-primary h-6 w-6" />
                   </div>
                   <div>
-                    <h1 className="text-foreground text-xl font-bold tracking-tight">
+                    <div className="text-muted-foreground/40 mb-1 text-xs font-semibold tracking-widest uppercase">
+                      {activeView === 'charts' ? 'Analytics' : 'Data'}
+                    </div>
+                    <h1 className="text-foreground text-2xl font-bold tracking-tight">
                       {pageTitle}
                     </h1>
-                    <p className="text-muted-foreground/70 mt-0.5 text-sm">{pageDescription}</p>
+                    <p className="text-muted-foreground mt-0.5 text-sm">{pageDescription}</p>
                   </div>
                 </div>
               </div>
@@ -87,37 +96,45 @@ export const AdminPage = () => {
 
             {activeView === 'charts' && (
               <div className="space-y-6">
-                <div className="flex gap-1 rounded-lg border bg-white p-1 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsTab('waste')}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
-                      analyticsTab === 'waste'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                    }`}
-                  >
-                    <Recycle className="h-4 w-4" />
-                    Waste Management
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsTab('complaint')}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
-                      analyticsTab === 'complaint'
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                    }`}
-                  >
-                    <AlertTriangle className="h-4 w-4" />
-                    Complaint Monitoring
-                  </button>
+                <div className="animate-in fade-in-0 slide-in-from-bottom-2 rounded-xl border border-white/20 bg-white/60 p-1.5 shadow-xs backdrop-blur-sm duration-500 [animation-delay:200ms]">
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setAnalyticsTab('waste')}
+                      className={cn(
+                        'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all',
+                        analyticsTab === 'waste'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/60',
+                      )}
+                    >
+                      <Recycle className="h-4 w-4" />
+                      Waste Management
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAnalyticsTab('complaint')}
+                      className={cn(
+                        'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all',
+                        analyticsTab === 'complaint'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/60',
+                      )}
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                      Complaint Monitoring
+                    </button>
+                  </div>
                 </div>
-                {analyticsTab === 'waste' ? <WasteCharts /> : <ComplaintCharts />}
+                <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500 [animation-delay:300ms]">
+                  {analyticsTab === 'waste' ? <WasteCharts /> : <ComplaintCharts />}
+                </div>
               </div>
             )}
-            {activeView === 'table' && <WasteRecord />}
-            {activeView === 'complaint' && <ComplaintMonitor />}
+            <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500 [animation-delay:200ms]">
+              {activeView === 'table' && <WasteRecord />}
+              {activeView === 'complaint' && <ComplaintMonitor />}
+            </div>
           </div>
         </main>
       </div>
