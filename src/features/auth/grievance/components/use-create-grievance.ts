@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { grievanceKeys } from '../api/use-grievances';
 import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
+import { profileKeys } from '@/features/gamification/api/use-user-profile';
 import { awardPointsForSubmission } from '@/features/complaint/utils/award-points';
 
 interface GrievanceInput {
@@ -30,6 +31,7 @@ export const useCreateGrievance = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grievanceKeys.lists() });
       queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
+      queryClient.invalidateQueries({ queryKey: profileKeys.current() });
     },
   });
 };

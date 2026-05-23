@@ -1,23 +1,33 @@
 import { supabase } from '@/lib/supabase';
 import type { ComplaintStatus } from '@/features/complaint/types';
 
+const POINTS: Record<ComplaintStatus, { master: number; child: number }> = {
+  pending: { master: 1, child: 1 },
+  'in-progress': { master: 2, child: 1 },
+  resolved: { master: 4, child: 2 },
+};
+
+function getPoints(status: ComplaintStatus, isChild: boolean): number {
+  const p = POINTS[status];
+  return isChild ? p.child : p.master;
+}
+
 export async function awardPointsForStatus(
   reporterId: string | null | undefined,
   grievanceId: string,
   oldStatus: ComplaintStatus | null,
   newStatus: ComplaintStatus,
+  isChild = false,
 ): Promise<void> {
-  if (!reporterId || !oldStatus || oldStatus === newStatus) {
-    if (!reporterId) console.warn('awardPointsForStatus: reporterId is null/undefined');
-    if (!oldStatus) console.warn('awardPointsForStatus: oldStatus is null/undefined');
-    return;
-  }
+  if (!reporterId || !oldStatus || oldStatus === newStatus) return;
 
-  const { error } = await supabase.rpc('award_points_for_status_fn', {
+  const delta = getPoints(newStatus, isChild) - getPoints(oldStatus, isChild);
+
+  const { error } = await supabase.rpc('adjust_points', {
     p_reporter_id: reporterId,
     p_grievance_id: grievanceId,
-    p_old_status: oldStatus,
-    p_new_status: newStatus,
+    p_delta: delta,
+    p_new_value: getPoints(newStatus, isChild),
   });
 
   if (error) throw error;
@@ -39,6 +49,44 @@ export async function awardPointsForSubmission(
   const { error } = await supabase
     .from('profiles')
     .upsert({ id: reporterId, points: currentPoints + 1 });
+
+  if (error) throw error;
+}
+
+export async function revokeChildPoints(
+  reporterId: string,
+  grievanceId: string,
+  currentBonusAwarded: number,
+): Promise<void> {
+  if (currentBonusAwarded <= 0) return;
+
+  const { error } = await supabase.rpc('adjust_points', {
+    p_reporter_id: reporterId,
+    p_grievance_id: grievanceId,
+    p_delta: -currentBonusAwarded,
+    p_new_value: 0,
+  });
+
+  if (error) throw error;
+}
+
+export async function restoreMasterPoints(
+  reporterId: string,
+  grievanceId: string,
+  status: ComplaintStatus,
+  currentBonusAwarded: number,
+): Promise<void> {
+  const newValue = getPoints(status, false);
+  const delta = newValue - currentBonusAwarded;
+
+  if (delta === 0) return;
+
+  const { error } = await supabase.rpc('adjust_points', {
+    p_reporter_id: reporterId,
+    p_grievance_id: grievanceId,
+    p_delta: delta,
+    p_new_value: newValue,
+  });
 
   if (error) throw error;
 }

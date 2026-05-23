@@ -4,6 +4,7 @@ import type { Complaint } from '@/features/complaint/types';
 import { complaintKeys } from './use-complaints';
 import { grievanceKeys } from '@/features/auth/grievance/api/use-grievances';
 import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
+import { profileKeys } from '@/features/gamification/api/use-user-profile';
 import { awardPointsForStatus } from '@/features/complaint/utils/award-points';
 
 export const useUpdateComplaint = () => {
@@ -54,6 +55,7 @@ export const useUpdateComplaint = () => {
       await queryClient.invalidateQueries({ queryKey: complaintKeys.all });
       await queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
       await queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
+      await queryClient.invalidateQueries({ queryKey: profileKeys.current() });
     },
   });
 };
