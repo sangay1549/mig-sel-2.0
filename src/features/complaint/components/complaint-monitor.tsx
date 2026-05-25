@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -39,7 +38,7 @@ import {
 
 const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
 
-type ActiveTab = 'total' | ComplaintStatus | 'critical';
+type ActiveTab = 'total' | ComplaintStatus;
 
 function Pagination({
   currentPage,
@@ -365,7 +364,7 @@ export const ComplaintMonitor = () => {
     .filter((c): c is NonNullable<typeof c> => c != null)
     .filter((c) => {
       if (activeTab === 'total') return true;
-      if (activeTab === 'critical') return c.urgency === 'critical';
+
       return c.status === activeTab;
     })
     .filter((c) => urgencyFilter === 'all' || c.urgency === urgencyFilter)
@@ -394,7 +393,6 @@ export const ComplaintMonitor = () => {
     pending: complaints.filter((c) => c.status === 'pending').length,
     inProgress: complaints.filter((c) => c.status === 'in-progress').length,
     resolved: complaints.filter((c) => c.status === 'resolved').length,
-    critical: complaints.filter((c) => c.urgency === 'critical').length,
   };
 
   const handleTabClick = (tab: ActiveTab) => {
@@ -529,7 +527,7 @@ export const ComplaintMonitor = () => {
             className="flex h-10 w-10 items-center justify-center rounded-lg"
             style={{ backgroundColor: '#154212' }}
           >
-            <AlertTriangle className="h-5 w-5 text-white" />
+            <MapPin className="h-5 w-5 text-white" />
           </div>
           <h2 className="text-lg font-bold tracking-tight" style={{ color: '#1c1b1b' }}>
             Complaint Monitoring
@@ -613,18 +611,6 @@ export const ComplaintMonitor = () => {
           '#16a34a',
           '#16a34a',
         )}
-        {tabCard(
-          'critical',
-          'Critical',
-          summary.critical,
-          summary.critical > 0 ? '#fef2f2' : '#f9fafb',
-          summary.critical > 0 ? '#fca5a5' : '#e5e2e1',
-          <AlertTriangle
-            className={`h-4 w-4 ${summary.critical > 0 ? 'text-red-500' : 'text-gray-400'}`}
-          />,
-          summary.critical > 0 ? '#dc2626' : '#72796e',
-          '#dc2626',
-        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -645,7 +631,6 @@ export const ComplaintMonitor = () => {
             style={{ borderColor: '#c2c9bb', color: '#42493e' }}
           >
             <option value="all">All</option>
-            <option value="critical">Critical</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>

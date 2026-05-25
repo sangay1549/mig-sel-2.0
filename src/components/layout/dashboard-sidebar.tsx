@@ -1,5 +1,5 @@
+import { Recycle, ClipboardList, LogOut, ChartLine, X, Map } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Recycle, ClipboardList, LogOut, Map, ChartLine, X } from 'lucide-react';
 import { LeafIcon } from '@/components/ui/leaf-icon';
 import { cn } from '@/lib/utils';
 import { useSignOut } from '@/features/auth/api/use-sign-out';

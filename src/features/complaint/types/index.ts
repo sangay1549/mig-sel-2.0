@@ -1,6 +1,6 @@
 export type ComplaintCategory = 'road' | 'garbage' | 'lighting' | 'drainage' | 'other';
 
-export type ComplaintUrgency = 'low' | 'medium' | 'high' | 'critical';
+export type ComplaintUrgency = 'low' | 'medium' | 'high';
 
 export type ComplaintStatus = 'pending' | 'in-progress' | 'resolved';
 
