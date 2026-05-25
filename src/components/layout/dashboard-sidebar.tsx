@@ -1,15 +1,16 @@
-import { Recycle, ClipboardList, LogOut, ChartLine, X, Map } from 'lucide-react';
+import { Recycle, ClipboardList, LogOut, ChartLine, X, Map, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LeafIcon } from '@/components/ui/leaf-icon';
 import { cn } from '@/lib/utils';
 import { useSignOut } from '@/features/auth/api/use-sign-out';
 
-export type NavView = 'charts' | 'table' | 'complaint';
+export type NavView = 'complaint' | 'table' | 'inspector' | 'charts';
 
 const navItems = [
-  { id: 'charts' as const, label: 'Analytics', icon: ChartLine },
   { id: 'complaint' as const, label: 'Complaint Monitoring', icon: ClipboardList },
   { id: 'table' as const, label: 'Waste Management', icon: Recycle },
+  { id: 'inspector' as const, label: 'Inspector', icon: FileText },
+  { id: 'charts' as const, label: 'Analytics', icon: ChartLine },
 ];
 
 export function DashboardSidebar({

@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   Clock,
   CheckCircle2,
@@ -22,6 +20,7 @@ import { grievanceKeys } from '@/features/auth/grievance/api/use-grievances';
 import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
 import { profileKeys } from '@/features/gamification/api/use-user-profile';
 import { ImageLightbox } from '@/features/auth/grievance/components/image-lightbox';
+import { Pagination } from '@/components/ui/pagination';
 import {
   URGENCY_BADGE,
   STATUS_BADGE,
@@ -37,95 +36,7 @@ import {
   restoreMasterPoints,
 } from '@/features/complaint/utils/award-points';
 
-const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20];
-
 type ActiveTab = 'total' | ComplaintStatus;
-
-function Pagination({
-  currentPage,
-  totalPages,
-  totalItems,
-  itemsPerPage,
-  onPageChange,
-  onItemsPerPageChange,
-}: {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  onPageChange: (page: number) => void;
-  onItemsPerPageChange: (count: number) => void;
-}) {
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
-
-  return (
-    <div
-      className="flex items-center justify-between border-t px-2 pt-4"
-      style={{ borderColor: '#e5e2e1' }}
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-xs" style={{ color: '#72796e' }}>
-          Rows per page:
-        </span>
-        <select
-          value={itemsPerPage}
-          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="rounded-lg border px-2 py-1 text-xs transition-all outline-none"
-          style={{ borderColor: '#c2c9bb', color: '#42493e' }}
-        >
-          {ITEMS_PER_PAGE_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-        <span className="text-xs" style={{ color: '#72796e' }}>
-          {startItem}–{endItem} of {totalItems}
-        </span>
-      </div>
-      <div className="flex items-center gap-1">
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-          className="rounded-lg p-1.5 transition-all hover:scale-110 disabled:opacity-30"
-          style={{ color: '#72796e' }}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        {Array.from({ length: totalPages }, (_, i) => i + 1)
-          .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-          .map((p, idx, arr) => (
-            <span key={p} className="flex items-center">
-              {idx > 0 && arr[idx - 1] !== p - 1 ? (
-                <span className="px-1 text-xs" style={{ color: '#c2c9bb' }}>
-                  ...
-                </span>
-              ) : null}
-              <button
-                onClick={() => onPageChange(p)}
-                className="min-w-[28px] rounded-lg px-2 py-1 text-xs font-semibold transition-all"
-                style={{
-                  backgroundColor: p === currentPage ? '#154212' : 'transparent',
-                  color: p === currentPage ? '#ffffff' : '#42493e',
-                }}
-              >
-                {p}
-              </button>
-            </span>
-          ))}
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-          className="rounded-lg p-1.5 transition-all hover:scale-110 disabled:opacity-30"
-          style={{ color: '#72796e' }}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export const ComplaintMonitor = () => {
   const [currentPage, setCurrentPage] = useState(1);
