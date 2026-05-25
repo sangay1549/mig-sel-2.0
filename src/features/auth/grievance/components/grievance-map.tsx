@@ -293,23 +293,23 @@ function ZoomControls() {
   return (
     <div
       className="absolute right-0 bottom-0 flex flex-col gap-px"
-      style={{ zIndex: 1000, marginBottom: 22, marginRight: 10 }}
+      style={{ zIndex: 1000, marginBottom: 60, marginRight: 8 }}
     >
       <button
         onClick={() => map.zoomIn()}
         title="Zoom in"
         aria-label="Zoom in"
-        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-t-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-t-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
       >
-        <Plus className="h-5 w-5 text-gray-700" />
+        <Plus className="h-4 w-4 text-gray-700 md:h-5 md:w-5" />
       </button>
       <button
         onClick={() => map.zoomOut()}
         title="Zoom out"
         aria-label="Zoom out"
-        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-b-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-b-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
       >
-        <Minus className="h-5 w-5 text-gray-700" />
+        <Minus className="h-4 w-4 text-gray-700 md:h-5 md:w-5" />
       </button>
     </div>
   );
@@ -427,7 +427,7 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
   return (
     <div
       className="absolute right-0 bottom-0"
-      style={{ zIndex: 1000, marginBottom: 100, marginRight: 10 }}
+      style={{ zIndex: 1000, marginBottom: 116, marginRight: 8 }}
     >
       {error && (
         <div
@@ -442,10 +442,10 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
         disabled={locating}
         title="My Location"
         aria-label="My Location"
-        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-wait disabled:opacity-50"
+        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-wait disabled:opacity-50 md:h-9 md:w-9"
       >
         {locating ? (
-          <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-700 md:h-4 md:w-4" />
         ) : (
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -455,7 +455,7 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-4 w-4 text-gray-700"
+            className="h-3.5 w-3.5 text-gray-700 md:h-4 md:w-4"
           >
             <line x1="12" x2="12" y1="2" y2="6" />
             <line x1="12" x2="12" y1="18" y2="22" />
@@ -687,6 +687,18 @@ function FullscreenButton({
       )}
     </button>
   );
+}
+
+function MapInit() {
+  const map = useMap();
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+  }, [map]);
+
+  return null;
 }
 
 function ScaleControl() {
@@ -974,8 +986,8 @@ export const GrievanceMap = () => {
       : mappedGrievances.filter((g) => g.category === activeFilter);
 
   return (
-    <div className="w-full space-y-4">
-      <div className="flex flex-wrap gap-2 pb-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-3">
         {categoryConfig.map(({ key, label, color }) => (
           <button
             key={key}
@@ -997,10 +1009,7 @@ export const GrievanceMap = () => {
         ))}
       </div>
 
-      <div
-        ref={mapContainerRef}
-        className="group relative h-[calc(100dvh-13rem)] min-h-[400px] w-full overflow-hidden rounded-2xl border border-gray-200 shadow-lg md:h-[550px]"
-      >
+      <div ref={mapContainerRef} className="group relative w-full flex-1 overflow-hidden">
         {isLoading && (
           <div className="absolute inset-0 z-[1001] flex items-center justify-center bg-white/60">
             <p className="text-sm font-medium text-gray-500">Loading reports...</p>
@@ -1027,6 +1036,7 @@ export const GrievanceMap = () => {
           touchZoom={true}
           preferCanvas={true}
         >
+          <MapInit />
           <ScaleControl />
 
           {mapStyle === 'street' ? (
@@ -1074,19 +1084,19 @@ export const GrievanceMap = () => {
 
           <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-black/[0.03]" />
 
-          <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2">
+          <div className="absolute top-4 right-4 z-[1000] flex items-center gap-1.5 md:gap-2">
             <MapStyleSwitcher mapStyle={mapStyle} onChange={setMapStyle} />
-            <div className="flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
-              <span className="relative flex h-2 w-2">
+            <div className="hidden items-center gap-1.5 rounded-xl bg-white/90 px-2 py-1.5 text-[10px] font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:flex md:gap-2 md:px-3 md:py-2 md:text-xs">
+              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 md:h-2 md:w-2" />
               </span>
               Live
             </div>
             <FullscreenButton containerRef={mapContainerRef} />
           </div>
 
-          <div className="absolute right-4 bottom-4 z-[1000] flex items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+          <div className="absolute right-4 bottom-4 z-[1000] flex items-center gap-1 rounded-xl bg-white/90 px-2 py-1.5 text-[9px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md md:gap-1.5 md:px-3 md:py-2 md:text-[10px]">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -1105,7 +1115,7 @@ export const GrievanceMap = () => {
               : 'Sarpang, Bhutan'}
           </div>
 
-          <div className="absolute bottom-4 left-4 z-[1000] flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md">
+          <div className="absolute bottom-4 left-4 z-[1000] hidden flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:flex md:gap-2">
             <div className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-[#d97706]" />
               <span>Road</span>

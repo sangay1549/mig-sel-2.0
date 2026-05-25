@@ -142,6 +142,13 @@ export const WasteRecord = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  const [editLimitDialog, setEditLimitDialog] = useState<{
+    record: WasteRecordType;
+  } | null>(null);
+  const [editConfirmDialog, setEditConfirmDialog] = useState<{
+    record: WasteRecordType;
+  } | null>(null);
+
   const [dropdownOpenId, setDropdownOpenId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -478,22 +485,24 @@ export const WasteRecord = () => {
                         {editingId === record.id && editForm ? (
                           <>
                             <td className="px-5 py-2.5">
-                              <select
-                                value={editForm.category}
-                                onChange={(e) =>
-                                  setEditForm({
-                                    ...editForm,
-                                    category: e.target.value as WasteCategory,
-                                  })
-                                }
-                                className="border-input bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/30 h-8 w-full rounded-lg border px-2 text-sm outline-none focus-visible:ring-2"
-                              >
-                                {CATEGORIES.map((c) => (
-                                  <option key={c.value} value={c.value}>
-                                    {c.label}
-                                  </option>
-                                ))}
-                              </select>
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={editForm.category}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      category: e.target.value as WasteCategory,
+                                    })
+                                  }
+                                  className="border-input bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/30 h-8 w-full rounded-lg border px-2 text-sm outline-none focus-visible:ring-2"
+                                >
+                                  {CATEGORIES.map((c) => (
+                                    <option key={c.value} value={c.value}>
+                                      {c.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
                             </td>
                             <td className="px-5 py-2.5">
                               <div className="flex items-center gap-1.5">
@@ -525,6 +534,7 @@ export const WasteRecord = () => {
                                 onChange={(e) =>
                                   setEditForm({ ...editForm, reportedAt: e.target.value })
                                 }
+                                max={new Date().toISOString().split('T')[0]}
                                 className="h-8 text-sm"
                               />
                             </td>
@@ -587,23 +597,23 @@ export const WasteRecord = () => {
                               </span>
                             </td>
                             <td className="max-w-[200px] px-5 py-3.5">
-                              {record.notes ? (
-                                <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-2">
+                                {record.notes ? (
                                   <span
                                     className="block truncate text-sm text-slate-500 italic"
                                     title={record.notes}
                                   >
                                     {record.notes}
                                   </span>
-                                  {(record.editCount > 0 || editedIds.has(record.id)) && (
-                                    <span className="text-muted-foreground/40 shrink-0 text-xs">
-                                      (edited)
-                                    </span>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-sm text-slate-300 italic">—</span>
-                              )}
+                                ) : (
+                                  <span className="text-sm text-slate-300 italic">—</span>
+                                )}
+                                {(record.editCount > 0 || editedIds.has(record.id)) && (
+                                  <span className="text-muted-foreground/40 shrink-0 text-xs">
+                                    (edited)
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="relative px-5 py-3.5 text-right">
                               <button
@@ -622,20 +632,24 @@ export const WasteRecord = () => {
                                   <button
                                     onClick={() => {
                                       setDropdownOpenId(null);
-                                      if (record.editCount >= 2) {
-                                        alert(
-                                          'This record has already been edited 2 times and can no longer be modified.',
-                                        );
+                                      const remaining = 2 - (record.editCount ?? 0);
+                                      if (remaining <= 0) {
+                                        setEditLimitDialog({ record });
                                         return;
                                       }
-                                      setEditingId(record.id);
-                                      setEditForm({ ...record });
-                                      setEditQuantityStr(String(record.quantity));
+                                      setEditConfirmDialog({ record });
                                     }}
                                     className="text-foreground hover:bg-accent flex w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors"
                                   >
                                     <Pencil className="h-3.5 w-3.5" />
-                                    Edit
+                                    <span className="flex items-center gap-1.5">
+                                      Edit
+                                      {(record.editCount ?? 0) > 0 && (
+                                        <span className="text-muted-foreground/60 text-xs">
+                                          ({record.editCount}/2)
+                                        </span>
+                                      )}
+                                    </span>
                                   </button>
                                   <button
                                     onClick={() => {
@@ -778,6 +792,125 @@ export const WasteRecord = () => {
           </div>
         </div>
       )}
+
+      <DialogRoot
+        open={!!editLimitDialog}
+        onOpenChange={(open) => {
+          if (!open) setEditLimitDialog(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Limit Reached</DialogTitle>
+            <DialogDescription>
+              This record has already been edited 2 times and can no longer be modified.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editLimitDialog && (
+            <div className="bg-muted/50 space-y-1.5 rounded-lg px-4 py-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground text-sm">Category</span>
+                <span className="text-foreground font-medium">
+                  {CATEGORY_LABELS[editLimitDialog.record.category]}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground text-sm">Quantity</span>
+                <span className="text-foreground font-medium tabular-nums">
+                  {editLimitDialog.record.quantity} {editLimitDialog.record.unit}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground text-sm">Date</span>
+                <span className="text-foreground font-medium">
+                  {editLimitDialog.record.reportedAt}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground text-sm">Edits used</span>
+                <span className="font-medium text-amber-600 tabular-nums">2/2</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button type="button">Got it</Button>
+            </DialogClose>
+          </div>
+        </DialogContent>
+      </DialogRoot>
+
+      <DialogRoot
+        open={!!editConfirmDialog}
+        onOpenChange={(open) => {
+          if (!open) setEditConfirmDialog(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Edit</DialogTitle>
+            <DialogDescription>
+              You are about to modify this waste record. All changes are audited.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editConfirmDialog && (
+            <div className="space-y-3">
+              <div className="bg-muted/50 space-y-1.5 rounded-lg px-4 py-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground text-sm">Category</span>
+                  <span className="text-foreground font-medium">
+                    {CATEGORY_LABELS[editConfirmDialog.record.category]}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground text-sm">Quantity</span>
+                  <span className="text-foreground font-medium tabular-nums">
+                    {editConfirmDialog.record.quantity} {editConfirmDialog.record.unit}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground text-sm">Date</span>
+                  <span className="text-foreground font-medium">
+                    {editConfirmDialog.record.reportedAt}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-lg border border-amber-200/60 bg-amber-50/80 px-4 py-3 text-sm">
+                <span className="text-amber-700">
+                  Edits remaining:{' '}
+                  <strong className="tabular-nums">
+                    {2 - (editConfirmDialog.record.editCount ?? 0)}/2
+                  </strong>
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="ghost">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!editConfirmDialog) return;
+                setEditingId(editConfirmDialog.record.id);
+                setEditForm({ ...editConfirmDialog.record });
+                setEditQuantityStr(String(editConfirmDialog.record.quantity));
+                setEditConfirmDialog(null);
+              }}
+            >
+              Proceed with Edit
+            </Button>
+          </div>
+        </DialogContent>
+      </DialogRoot>
 
       <DialogRoot
         open={!!deleteConfirm}

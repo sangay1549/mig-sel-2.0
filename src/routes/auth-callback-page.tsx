@@ -19,28 +19,24 @@ export const AuthCallbackPage = () => {
     };
 
     const handleAuthCallback = async () => {
-      const auth = await supabase.auth.getSession();
-      const session = auth.data.session;
-      const sessionError = auth.error;
-
-      if (sessionError) {
-        navigate('/login');
-        return;
-      }
-
-      if (session) {
-        redirectByRole(session);
+      const { error: initError } = await supabase.auth.initialize();
+      if (initError) {
+        if (!cancelled) navigate('/');
         return;
       }
 
       const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-        if (newSession) {
-          subscription.unsubscribe();
-          redirectByRole(newSession);
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (!cancelled) {
+        if (error || !session) {
+          navigate('/');
+          return;
         }
-      });
+        redirectByRole(session);
+      }
     };
 
     handleAuthCallback();

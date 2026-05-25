@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { X, MapPin, UploadCloud, Camera, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, MapPin, Camera, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useGeoLocation } from '../hooks/use-geo-location';
 import { uploadGrievanceImage } from './use-upload-image';
@@ -23,7 +23,6 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
   const { user } = useCurrentUser();
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const mutation = useCreateGrievance();
 
@@ -161,14 +160,6 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
           </div>
 
           <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-
-          <input
             ref={cameraInputRef}
             type="file"
             accept="image/*"
@@ -181,26 +172,15 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
             <label className="text-label-sm text-muted-foreground font-bold uppercase">
               Photo <span className="text-destructive">*</span>
             </label>
-            <div className="flex gap-3">
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-outline hover:bg-surface-container-low flex flex-1 cursor-pointer flex-col items-center justify-center space-y-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors"
-              >
-                <UploadCloud className="text-primary h-7 w-7" />
-                <p className="text-label-sm font-semibold">
-                  {selectedFile ? selectedFile.name : 'Upload from gallery'}
-                </p>
-                <p className="text-body-xs text-muted-foreground">JPEG, JPG or PNG (Max 10MB)</p>
-              </div>
-
-              <div
-                onClick={() => cameraInputRef.current?.click()}
-                className="border-primary hover:bg-primary/5 flex flex-1 cursor-pointer flex-col items-center justify-center space-y-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors"
-              >
-                <Camera className="text-primary h-7 w-7" />
-                <p className="text-label-sm text-primary font-semibold">Take a photo</p>
-                <p className="text-body-xs text-muted-foreground">Use your device camera</p>
-              </div>
+            <div
+              onClick={() => cameraInputRef.current?.click()}
+              className="border-primary hover:bg-primary/5 flex cursor-pointer flex-col items-center justify-center space-y-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors"
+            >
+              <Camera className="text-primary h-7 w-7" />
+              <p className="text-label-sm text-primary font-semibold">
+                {selectedFile ? selectedFile.name : 'Take a photo'}
+              </p>
+              <p className="text-body-xs text-muted-foreground">Use your device camera</p>
             </div>
           </div>
 

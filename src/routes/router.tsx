@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { getUserRole } from '@/lib/role-query';
 import { LandingPage } from './landing-page';
 import { AdminPage } from './admin-page';
-import { LoginPage } from './login-page';
 import { NotFoundPage } from './not-found-page';
 import { AuthCallbackPage } from './auth-callback-page';
 import { MapPage } from './map-page';
@@ -28,10 +27,6 @@ export const router = createBrowserRouter([
       return redirect('/map');
     },
     element: <LandingPage />,
-  },
-  {
-    path: '/login',
-    element: <LoginPage />,
   },
   {
     path: '/auth/callback',

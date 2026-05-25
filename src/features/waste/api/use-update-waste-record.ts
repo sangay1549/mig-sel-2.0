@@ -16,6 +16,8 @@ export const useUpdateWasteRecord = () => {
       if (record.reportedAt) dbPayload.reported_at = record.reportedAt;
       if (record.notes !== undefined) dbPayload.notes = record.notes;
 
+      dbPayload.edit_count = (record.editCount ?? 0) + 1;
+
       const { error } = await supabase.from('waste_records').update(dbPayload).eq('id', record.id);
 
       if (error) throw error;
