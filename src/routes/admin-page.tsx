@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { ClipboardList, ChartPie, Menu, Recycle, AlertTriangle, FileText } from 'lucide-react';
+import {
+  ClipboardList,
+  ChartPie,
+  Menu,
+  Recycle,
+  AlertTriangle,
+  FileText,
+  Shield,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DashboardSidebar, type NavView } from '@/components/layout/dashboard-sidebar';
 import { WasteRecord } from '@/features/waste/components/waste-record';
@@ -7,17 +15,19 @@ import { WasteCharts } from '@/features/waste/components/waste-charts';
 import { ComplaintMonitor } from '@/features/complaint/components/complaint-monitor';
 import { ComplaintCharts } from '@/features/complaint/components/complaint-charts';
 import { WasteReportingForm } from '@/features/waste/components/waste-reporting-form';
+import { RoleAssignment } from '@/features/admin/components/role-assignment';
 
 const iconMap: Record<NavView, typeof ClipboardList> = {
   complaint: ClipboardList,
   table: Recycle,
   inspector: FileText,
+  role: Shield,
   charts: ChartPie,
 };
 
 export const AdminPage = () => {
   const [activeView, setActiveView] = useState<NavView>('complaint');
-  const [analyticsTab, setAnalyticsTab] = useState<'waste' | 'complaint'>('waste');
+  const [analyticsTab, setAnalyticsTab] = useState<'waste' | 'complaint'>('complaint');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const pageMeta: Record<NavView, { title: string; description: string }> = {
@@ -27,6 +37,7 @@ export const AdminPage = () => {
     },
     table: { title: 'Waste Management', description: 'Oversight panel for GMC waste management' },
     inspector: { title: 'Inspector', description: 'Submit waste collection records' },
+    role: { title: 'Role Assignment', description: 'Search and update user roles' },
     charts: { title: 'Analytics', description: 'Oversight panel for GMC waste management' },
   };
 
@@ -65,7 +76,7 @@ export const AdminPage = () => {
           >
             <Menu className="h-5 w-5" />
           </button>
-          {activeView !== 'complaint' && activeView !== 'inspector' && (
+          {activeView !== 'complaint' && activeView !== 'inspector' && activeView !== 'role' && (
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-sm font-bold tracking-tight">{pageTitle}</h1>
               <p className="text-muted-foreground/70 truncate text-xs">{pageDescription}</p>
@@ -75,7 +86,7 @@ export const AdminPage = () => {
 
         <main className="flex-1 overflow-auto">
           <div className="mx-auto px-4 py-8 sm:px-6 lg:px-8" style={{ maxWidth: '1200px' }}>
-            {activeView !== 'complaint' && activeView !== 'inspector' && (
+            {activeView !== 'complaint' && activeView !== 'inspector' && activeView !== 'role' && (
               <div className="animate-in fade-in-0 slide-in-from-top-2 mb-8 hidden duration-500 [animation-delay:100ms] md:block">
                 <div className="flex items-center gap-4">
                   <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-xl">
@@ -99,6 +110,7 @@ export const AdminPage = () => {
                 <WasteReportingForm />
               </div>
             )}
+            {activeView === 'role' && <RoleAssignment />}
             {activeView === 'charts' && (
               <div className="space-y-6">
                 <div className="animate-in fade-in-0 slide-in-from-bottom-2 rounded-xl border border-white/20 bg-white/60 p-1.5 shadow-xs backdrop-blur-sm duration-500 [animation-delay:200ms]">
