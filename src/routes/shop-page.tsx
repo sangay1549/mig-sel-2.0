@@ -1,6 +1,20 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, Gift, UtensilsCrossed, Building2, Lock } from 'lucide-react';
+import {
+  ArrowLeft,
+  ShoppingBag,
+  Gift,
+  UtensilsCrossed,
+  Building2,
+  Lock,
+  Recycle,
+  TreePine,
+  Heart,
+  BookOpen,
+  Award,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import { useUserProfile } from '@/features/gamification/api/use-user-profile';
 
 const ITEMS = [
@@ -25,11 +39,62 @@ const ITEMS = [
     cost: 20,
     comingSoon: true,
   },
+  {
+    icon: Recycle,
+    title: 'Eco-Friendly Kit',
+    description: 'Reusable bags, bottles, and sustainable goodies',
+    cost: 40,
+    comingSoon: true,
+  },
+  {
+    icon: TreePine,
+    title: 'Tree Planting Voucher',
+    description: 'Plant a tree in your name in the city park',
+    cost: 60,
+    comingSoon: true,
+  },
+  {
+    icon: Heart,
+    title: 'Health Checkup Pass',
+    description: 'Free basic health screening at city clinics',
+    cost: 35,
+    comingSoon: true,
+  },
+  {
+    icon: BookOpen,
+    title: 'Library Membership',
+    description: 'Premium library membership with extended borrowing',
+    cost: 25,
+    comingSoon: true,
+  },
+  {
+    icon: Award,
+    title: 'Volunteer Badge',
+    description: 'Exclusive profile badge and recognition certificate',
+    cost: 15,
+    comingSoon: true,
+  },
+  {
+    icon: Building2,
+    title: 'Parking Permit',
+    description: 'Discounted city parking permit for 3 months',
+    cost: 45,
+    comingSoon: true,
+  },
 ];
+
+const ITEMS_PER_PAGE = 3;
 
 export const ShopPage = () => {
   const navigate = useNavigate();
   const { data: profile } = useUserProfile();
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(ITEMS.length / ITEMS_PER_PAGE);
+  const paginatedItems = ITEMS.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -60,7 +125,7 @@ export const ShopPage = () => {
         </div>
 
         <div className="space-y-4">
-          {ITEMS.map((item) => {
+          {paginatedItems.map((item) => {
             const Icon = item.icon;
             return (
               <div
@@ -98,6 +163,17 @@ export const ShopPage = () => {
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={ITEMS.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={() => {}}
+          />
         </div>
 
         {(!profile || profile.points < 20) && (
