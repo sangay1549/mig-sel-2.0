@@ -1,4 +1,5 @@
-import { Clock, CheckCircle2, MoveRight, MapPin } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Clock, CheckCircle2, MoveRight, MapPin, Trophy, Loader2 } from 'lucide-react';
 import {
   DialogRoot,
   DialogTrigger,
@@ -15,10 +16,14 @@ import {
   CATEGORY_LABELS,
   STATUS_LABELS,
   URGENCY_LABELS,
+  CATEGORY_COLORS,
+  STATUS_ORDER,
 } from '@/features/complaint/constants';
 import { Field } from '@/components/ui/field';
 import { ImageLightbox } from '@/features/auth/grievance/components/image-lightbox';
-import type { Complaint } from '@/features/complaint/types';
+import { useUpdateComplaint } from '@/features/complaint/api/use-update-complaint';
+import { useClickOutside } from '@/hooks/use-click-outside';
+import type { Complaint, ComplaintStatus, ComplaintUrgency } from '@/features/complaint/types';
 
 export function ComplaintDetailDialog({
   complaint,
@@ -27,6 +32,37 @@ export function ComplaintDetailDialog({
   complaint: Complaint;
   trigger: React.ReactNode;
 }) {
+  const updateComplaint = useUpdateComplaint();
+  const [editingUrgency, setEditingUrgency] = useState(false);
+  const [editingStatus, setEditingStatus] = useState(false);
+  const urgencyRef = useRef<HTMLDivElement>(null);
+  const statusRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(urgencyRef, () => setEditingUrgency(false));
+  useClickOutside(statusRef, () => setEditingStatus(false));
+
+  const handleUrgencyChange = (urgency: ComplaintUrgency) => {
+    setEditingUrgency(false);
+    if (urgency === complaint.urgency) return;
+    updateComplaint.mutate({ id: complaint.id, urgency });
+  };
+
+  const handleStatusChange = (status: ComplaintStatus) => {
+    setEditingStatus(false);
+    if (status === complaint.status) return;
+    const updates: Record<string, unknown> = { id: complaint.id, status };
+    if (status === 'resolved') {
+      updates.resolved_at = new Date().toISOString();
+    }
+    updateComplaint.mutate(updates as Parameters<typeof updateComplaint.mutate>[0]);
+  };
+
+  const statusPoints: Record<string, number> = {
+    pending: 1,
+    'in-progress': 2,
+    resolved: 4,
+  };
+
   return (
     <DialogRoot>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -45,31 +81,91 @@ export function ComplaintDetailDialog({
 
         <div className="space-y-5">
           <div className="flex items-center gap-2">
-            <span
-              className="inline-block rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm"
-              style={{
-                backgroundColor: URGENCY_BADGE[complaint.urgency]?.bg || '#f3f4f6',
-                color: URGENCY_BADGE[complaint.urgency]?.text || '#1f2937',
-              }}
-            >
-              {URGENCY_LABELS[complaint.urgency] || complaint.urgency}
-            </span>
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm"
-              style={{
-                backgroundColor: STATUS_BADGE[complaint.status]?.bg || '#f3f4f6',
-                color: STATUS_BADGE[complaint.status]?.text || '#1f2937',
-              }}
-            >
-              {complaint.status === 'pending' ? (
-                <Clock className="h-3 w-3" />
-              ) : complaint.status === 'resolved' ? (
-                <CheckCircle2 className="h-3 w-3" />
-              ) : (
-                <MoveRight className="h-3 w-3" />
+            <div ref={urgencyRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setEditingUrgency(!editingUrgency)}
+                className="cursor-pointer rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: URGENCY_BADGE[complaint.urgency]?.bg || '#f3f4f6',
+                  color: URGENCY_BADGE[complaint.urgency]?.text || '#1f2937',
+                }}
+              >
+                {URGENCY_LABELS[complaint.urgency] || complaint.urgency}
+              </button>
+              {editingUrgency && (
+                <div className="bg-card border-border/50 absolute left-0 z-50 mt-1 w-36 overflow-hidden rounded-xl border shadow-xl">
+                  {(Object.keys(URGENCY_LABELS) as ComplaintUrgency[]).map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => handleUrgencyChange(u)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold tracking-wide uppercase transition-colors hover:opacity-80"
+                      style={{
+                        backgroundColor:
+                          u === complaint.urgency ? URGENCY_BADGE[u].bg : 'transparent',
+                        color: URGENCY_BADGE[u].text,
+                      }}
+                    >
+                      {URGENCY_LABELS[u]}
+                      {u === complaint.urgency && (
+                        <span className="ml-auto text-[10px] opacity-60">Current</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               )}
-              {STATUS_LABELS[complaint.status] || complaint.status}
-            </span>
+            </div>
+
+            <div ref={statusRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setEditingStatus(!editingStatus)}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: STATUS_BADGE[complaint.status]?.bg || '#f3f4f6',
+                  color: STATUS_BADGE[complaint.status]?.text || '#1f2937',
+                }}
+              >
+                {complaint.status === 'pending' ? (
+                  <Clock className="h-3 w-3" />
+                ) : complaint.status === 'resolved' ? (
+                  <CheckCircle2 className="h-3 w-3" />
+                ) : (
+                  <MoveRight className="h-3 w-3" />
+                )}
+                {STATUS_LABELS[complaint.status] || complaint.status}
+              </button>
+              {editingStatus && (
+                <div className="bg-card border-border/50 absolute left-0 z-50 mt-1 w-40 overflow-hidden rounded-xl border shadow-xl">
+                  {STATUS_ORDER.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => handleStatusChange(s)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-xs font-bold tracking-wide uppercase transition-colors hover:opacity-80"
+                      style={{
+                        backgroundColor:
+                          s === complaint.status ? STATUS_BADGE[s].bg : 'transparent',
+                        color: STATUS_BADGE[s].text,
+                      }}
+                    >
+                      {s === 'pending' ? (
+                        <Clock className="h-3 w-3" />
+                      ) : s === 'resolved' ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : (
+                        <MoveRight className="h-3 w-3" />
+                      )}
+                      {STATUS_LABELS[s]}
+                      {s === complaint.status && (
+                        <span className="ml-auto text-[10px] opacity-60">Current</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {complaint.image_url && (
@@ -88,10 +184,31 @@ export function ComplaintDetailDialog({
 
           <div className="grid grid-cols-3 gap-4">
             <Field label="Category">
-              <span>{CATEGORY_LABELS[complaint.category] || complaint.category}</span>
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: CATEGORY_COLORS[complaint.category] || '#6b7280' }}
+                />
+                {CATEGORY_LABELS[complaint.category] || complaint.category}
+              </span>
             </Field>
             <Field label="Urgency">
-              <span>{URGENCY_LABELS[complaint.urgency] || complaint.urgency}</span>
+              <select
+                value={complaint.urgency}
+                onChange={(e) => handleUrgencyChange(e.target.value as ComplaintUrgency)}
+                className="cursor-pointer rounded-lg border px-2 py-1 text-xs font-bold tracking-wide uppercase outline-none"
+                style={{
+                  borderColor: URGENCY_BADGE[complaint.urgency]?.text || '#c2c9bb',
+                  backgroundColor: URGENCY_BADGE[complaint.urgency]?.bg || '#f3f4f6',
+                  color: URGENCY_BADGE[complaint.urgency]?.text || '#1f2937',
+                }}
+              >
+                {(Object.keys(URGENCY_LABELS) as ComplaintUrgency[]).map((key) => (
+                  <option key={key} value={key}>
+                    {URGENCY_LABELS[key]}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Status">
               <span>{STATUS_LABELS[complaint.status] || complaint.status}</span>
@@ -113,6 +230,40 @@ export function ComplaintDetailDialog({
             </Field>
           </div>
 
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Reporter ID">
+              <span className="font-mono text-xs">{complaint.reporter_id}</span>
+            </Field>
+            <Field label="Resolved At">
+              <span className="text-xs">
+                {complaint.resolved_at
+                  ? new Date(complaint.resolved_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  : '—'}
+              </span>
+            </Field>
+            <Field label="Bonus Awarded">
+              <span className="text-xs">{complaint.bonus_awarded}</span>
+            </Field>
+          </div>
+
+          <div className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <Trophy className="h-4 w-4 text-amber-600" />
+            <span className="text-xs font-medium text-amber-800">
+              Points: <strong>{statusPoints[complaint.status] ?? 1}</strong>
+              {' / 4 pts'}
+            </span>
+          </div>
+
+          {complaint.parent_id && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <span className="font-semibold">Linked to parent:</span> {complaint.parent_id}
+            </div>
+          )}
+
           {complaint.resolved_image_url && (
             <div>
               <p className="text-muted-foreground/60 text-xs font-bold tracking-wide uppercase">
@@ -128,6 +279,12 @@ export function ComplaintDetailDialog({
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
+          {updateComplaint.isPending && (
+            <span className="text-muted-foreground flex items-center gap-1 text-xs">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Saving...
+            </span>
+          )}
           <DialogClose asChild>
             <Button variant="outline" size="sm">
               Close
