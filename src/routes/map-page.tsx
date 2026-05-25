@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router';
 import { LogOut, LayoutDashboard, Trophy, ShoppingBag, Camera } from 'lucide-react';
 import { LeafIcon } from '@/components/ui/leaf-icon';
 import { useIsAdmin } from '@/features/auth/api/use-is-admin';
+import { useIsInspector } from '@/features/auth/api/use-is-inspector';
 import { useSignOut } from '@/features/auth/api/use-sign-out';
 
 export const MapPage = () => {
@@ -13,6 +14,7 @@ export const MapPage = () => {
   const signOut = useSignOut();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { data: isAdmin } = useIsAdmin();
+  const { data: isInspector } = useIsInspector();
 
   return (
     <div className="bg-background flex h-dvh flex-col overflow-hidden font-sans">
@@ -55,7 +57,16 @@ export const MapPage = () => {
               className="text-muted-foreground hover:text-primary hover:bg-primary/5 h-8 gap-1 px-1.5 text-[10px] font-semibold md:h-auto md:gap-1.5 md:px-3 md:text-sm"
             >
               <LayoutDashboard className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Admin</span>
+              <span className="hidden sm:inline">Admin Dashboard</span>
+            </Button>
+          ) : isInspector ? (
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/inspector')}
+              className="text-muted-foreground hover:text-primary hover:bg-primary/5 h-8 gap-1 px-1.5 text-[10px] font-semibold md:h-auto md:gap-1.5 md:px-3 md:text-sm"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Inspector Dashboard</span>
             </Button>
           ) : (
             <Button
@@ -66,7 +77,7 @@ export const MapPage = () => {
             >
               <LogOut className="h-3.5 w-3.5 md:h-4 md:w-4" />
               <span className="hidden sm:inline">
-                {signOut.isPending ? 'Signing out...' : 'Exit'}
+                {signOut.isPending ? 'Signing out...' : 'Sign Out'}
               </span>
             </Button>
           )}

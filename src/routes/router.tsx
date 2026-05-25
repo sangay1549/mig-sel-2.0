@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { getUserRole } from '@/lib/role-query';
 import { LandingPage } from './landing-page';
 import { AdminPage } from './admin-page';
+import { InspectorPage } from './inspector-page';
 import { NotFoundPage } from './not-found-page';
 import { AuthCallbackPage } from './auth-callback-page';
 import { MapPage } from './map-page';
@@ -11,6 +12,7 @@ import { LeaderboardPage } from './leaderboard-page';
 import { ShopPage } from './shop-page';
 import { ProtectedRoute } from '@/components/layout/protected-route';
 import { AdminRoute } from '@/components/layout/admin-route';
+import { InspectorRoute } from '@/components/layout/inspector-route';
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +26,7 @@ export const router = createBrowserRouter([
       const role = await getUserRole(session);
 
       if (role === 'admin') return redirect('/dashboard');
+      if (role === 'inspector') return redirect('/inspector');
       return redirect('/map');
     },
     element: <LandingPage />,
@@ -46,6 +49,16 @@ export const router = createBrowserRouter([
     path: '/shop',
     element: <ProtectedRoute />,
     children: [{ index: true, element: <ShopPage /> }],
+  },
+  {
+    path: '/inspector',
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <InspectorRoute />,
+        children: [{ index: true, element: <InspectorPage /> }],
+      },
+    ],
   },
   {
     path: '/dashboard',

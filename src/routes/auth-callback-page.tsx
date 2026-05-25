@@ -14,7 +14,9 @@ export const AuthCallbackPage = () => {
       const role = await getUserRole(session);
 
       if (!cancelled) {
-        navigate(role === 'admin' ? '/dashboard' : '/map');
+        if (role === 'admin') navigate('/dashboard');
+        else if (role === 'inspector') navigate('/inspector');
+        else navigate('/map');
       }
     };
 
