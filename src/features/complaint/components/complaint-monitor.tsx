@@ -17,6 +17,7 @@ import {
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
+import { useComplaints, complaintKeys } from '@/features/complaint/api/use-complaints';
 import { grievanceKeys } from '@/features/auth/grievance/api/use-grievances';
 import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
 import { profileKeys } from '@/features/gamification/api/use-user-profile';
@@ -127,9 +128,6 @@ function Pagination({
 }
 
 export const ComplaintMonitor = () => {
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [activeTab, setActiveTab] = useState<ActiveTab>('total');
@@ -142,32 +140,7 @@ export const ComplaintMonitor = () => {
   const [previewComplaint, setPreviewComplaint] = useState<Complaint | null>(null);
 
   const queryClient = useQueryClient();
-
-  const fetchGrievances = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: supabaseError } = await supabase
-        .from('grievances')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (supabaseError) throw supabaseError;
-
-      setComplaints(data || []);
-    } catch (err: unknown) {
-      console.error('Error fetching data:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred while loading complaints.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchGrievances();
-  }, []);
+  const { data: complaints = [], isLoading, error: queryError } = useComplaints();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -199,8 +172,8 @@ export const ComplaintMonitor = () => {
     const children = !current.parent_id ? complaints.filter((c) => c.parent_id === id) : [];
 
     // Optimistic update for master and all children
-    setComplaints((prev) =>
-      prev.map((c) => {
+    queryClient.setQueryData<Complaint[]>(complaintKeys.all, (old) =>
+      (old ?? []).map((c) => {
         if (c.id === id) return { ...c, ...updates } as Complaint;
         if (c.parent_id === id) return { ...c, ...childUpdates } as Complaint;
         return c;
@@ -238,17 +211,9 @@ export const ComplaintMonitor = () => {
       queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
       queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
       queryClient.invalidateQueries({ queryKey: profileKeys.current() });
-
-      // Silently refresh to ensure DB consistency
-      const { data: refreshed, error: refreshError } = await supabase
-        .from('grievances')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (!refreshError && refreshed) {
-        setComplaints(refreshed);
-      }
+      queryClient.invalidateQueries({ queryKey: complaintKeys.all });
     } catch (err: unknown) {
-      fetchGrievances();
+      queryClient.invalidateQueries({ queryKey: complaintKeys.all });
       const message =
         err instanceof Error
           ? err.message
@@ -294,11 +259,7 @@ export const ComplaintMonitor = () => {
     }
 
     setMergeTargetId(null);
-    const { data: refreshed } = await supabase
-      .from('grievances')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (refreshed) setComplaints(refreshed);
+    queryClient.invalidateQueries({ queryKey: complaintKeys.all });
   };
 
   const handleUnlink = async (complaintId: string) => {
@@ -327,19 +288,16 @@ export const ComplaintMonitor = () => {
     queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
     queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
     queryClient.invalidateQueries({ queryKey: profileKeys.current() });
-
-    const { data: refreshed } = await supabase
-      .from('grievances')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (refreshed) setComplaints(refreshed);
+    queryClient.invalidateQueries({ queryKey: complaintKeys.all });
   };
 
   const handleUrgencyChange = async (id: string, newUrgency: ComplaintUrgency) => {
     const current = complaints.find((c) => c.id === id);
     if (!current || current.urgency === newUrgency) return;
 
-    setComplaints((prev) => prev.map((c) => (c.id === id ? { ...c, urgency: newUrgency } : c)));
+    queryClient.setQueryData<Complaint[]>(complaintKeys.all, (old) =>
+      (old ?? []).map((c) => (c.id === id ? { ...c, urgency: newUrgency } : c)),
+    );
 
     try {
       const { error: supabaseError } = await supabase
@@ -351,7 +309,7 @@ export const ComplaintMonitor = () => {
 
       queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
     } catch (err: unknown) {
-      fetchGrievances();
+      queryClient.invalidateQueries({ queryKey: complaintKeys.all });
       const message =
         err instanceof Error
           ? err.message
@@ -573,9 +531,12 @@ export const ComplaintMonitor = () => {
         </div>
       </div>
 
-      {error && (
+      {queryError && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">
-          Error: {error}
+          Error:{' '}
+          {queryError instanceof Error
+            ? queryError.message
+            : 'An error occurred while loading complaints.'}
         </div>
       )}
 
@@ -702,7 +663,7 @@ export const ComplaintMonitor = () => {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {isLoading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
@@ -724,7 +685,10 @@ export const ComplaintMonitor = () => {
                     className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50"
                   >
                     <td className="px-4 py-3">
-                      <div className="max-w-[220px]">
+                      <div
+                        className="max-w-[220px] cursor-pointer"
+                        onClick={() => setPreviewComplaint(complaint)}
+                      >
                         <p className="truncate text-sm font-semibold text-slate-800">
                           {complaint.title}
                         </p>
@@ -1105,6 +1069,11 @@ export const ComplaintMonitor = () => {
             ? complaints.find((c) => c.id === previewComplaint.parent_id)
             : null;
           const parentChildren = parent ? childrenMap.get(parent.id) : null;
+          const statusPoints: Record<string, number> = {
+            pending: 1,
+            'in-progress': 2,
+            resolved: 4,
+          };
           return (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
@@ -1153,31 +1122,128 @@ export const ComplaintMonitor = () => {
                     >
                       {CATEGORY_LABELS[previewComplaint.category] || previewComplaint.category}
                     </span>
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                    <select
+                      value={previewComplaint.urgency}
+                      onChange={(e) => {
+                        handleUrgencyChange(
+                          previewComplaint.id,
+                          e.target.value as ComplaintUrgency,
+                        );
+                        setPreviewComplaint(
+                          (prev) =>
+                            prev && { ...prev, urgency: e.target.value as ComplaintUrgency },
+                        );
+                      }}
+                      className="cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase outline-none"
                       style={{
                         backgroundColor: URGENCY_BADGE[previewComplaint.urgency]?.bg || '#f3f4f6',
                         color: URGENCY_BADGE[previewComplaint.urgency]?.text || '#6b7280',
+                        borderColor: 'transparent',
                       }}
                     >
-                      {URGENCY_LABELS[previewComplaint.urgency]}
-                    </span>
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
-                      style={{
-                        backgroundColor: STATUS_BADGE[previewComplaint.status]?.bg || '#f3f4f6',
-                        color: STATUS_BADGE[previewComplaint.status]?.text || '#6b7280',
+                      {(Object.keys(URGENCY_LABELS) as ComplaintUrgency[]).map((key) => (
+                        <option key={key} value={key}>
+                          {URGENCY_LABELS[key]}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={previewComplaint.status}
+                      onChange={(e) => {
+                        handleStatusChange(previewComplaint.id, e.target.value as ComplaintStatus);
+                        setPreviewComplaint(
+                          (prev) => prev && { ...prev, status: e.target.value as ComplaintStatus },
+                        );
                       }}
+                      className={`cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase outline-none ${
+                        previewComplaint.status === 'resolved'
+                          ? 'bg-emerald-500 text-white'
+                          : previewComplaint.status === 'in-progress'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-orange-400 text-white'
+                      }`}
                     >
-                      {STATUS_LABELS[previewComplaint.status]}
-                    </span>
+                      {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   {previewComplaint.location && (
                     <p style={{ color: '#72796e' }}>
                       <span className="font-medium">Location:</span> {previewComplaint.location}
                     </p>
                   )}
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    <div>
+                      <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                        Latitude
+                      </p>
+                      <p className="font-mono text-[11px]" style={{ color: '#42493e' }}>
+                        {previewComplaint.latitude}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                        Longitude
+                      </p>
+                      <p className="font-mono text-[11px]" style={{ color: '#42493e' }}>
+                        {previewComplaint.longitude}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                        Reporter
+                      </p>
+                      <p className="truncate font-mono text-[11px]" style={{ color: '#42493e' }}>
+                        {previewComplaint.reporter_id.slice(0, 8)}...
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                        Resolved At
+                      </p>
+                      <p style={{ color: '#42493e' }}>
+                        {previewComplaint.resolved_at
+                          ? new Date(previewComplaint.resolved_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })
+                          : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                        Bonus
+                      </p>
+                      <p style={{ color: '#42493e' }}>{previewComplaint.bonus_awarded}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Trophy className="h-3 w-3 text-amber-500" />
+                      <span className="text-sm font-bold" style={{ color: '#42493e' }}>
+                        {statusPoints[previewComplaint.status] ?? 1}
+                      </span>
+                      <span className="text-[10px]" style={{ color: '#c2c9bb' }}>
+                        / 4
+                      </span>
+                    </div>
+                  </div>
                 </div>
+                {previewComplaint.resolved_image_url && (
+                  <div className="mt-3">
+                    <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                      Resolved Image
+                    </p>
+                    <ImageLightbox
+                      src={previewComplaint.resolved_image_url}
+                      alt="Resolved"
+                      className="mt-1 max-h-40 w-full rounded-lg object-contain shadow-sm"
+                    />
+                  </div>
+                )}
                 {parent && (
                   <div className="mt-4 border-t pt-3" style={{ borderColor: '#e5e2e1' }}>
                     <p className="mb-2 text-xs font-bold" style={{ color: '#92400e' }}>
