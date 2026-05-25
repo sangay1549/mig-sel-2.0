@@ -14,7 +14,9 @@ export const LandingPage = () => {
   useEffect(() => {
     if (!isLoading && session) {
       const role = session.user?.app_metadata?.role ?? session.user?.user_metadata?.role;
-      navigate(role === 'admin' ? '/dashboard' : '/map', { replace: true });
+      if (role === 'admin') navigate('/dashboard', { replace: true });
+      else if (role === 'inspector') navigate('/inspector', { replace: true });
+      else navigate('/map', { replace: true });
     }
   }, [session, isLoading, navigate]);
 
