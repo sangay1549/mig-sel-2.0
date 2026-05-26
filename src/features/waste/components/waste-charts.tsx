@@ -86,6 +86,7 @@ type BarItem = {
   quantity: number;
   color: string;
   pct: string;
+  unit: string;
 };
 
 function buildBarDataForRange(records: WasteRecord[], start: Date, end: Date): BarItem[] {
@@ -96,8 +97,13 @@ function buildBarDataForRange(records: WasteRecord[], start: Date, end: Date): B
 
   if (filtered.length === 0) return [];
 
-  const total = filtered.reduce((sum, r) => sum + r.quantity, 0);
-  const grouped = filtered.reduce<Record<string, number>>((acc, r) => {
+  const normalized = filtered.map((r) => ({
+    ...r,
+    quantity: r.unit === 'ton' ? r.quantity * 1000 : r.quantity,
+  }));
+
+  const total = normalized.reduce((sum, r) => sum + r.quantity, 0);
+  const grouped = normalized.reduce<Record<string, number>>((acc, r) => {
     acc[r.category] = (acc[r.category] || 0) + r.quantity;
     return acc;
   }, {});
@@ -109,6 +115,7 @@ function buildBarDataForRange(records: WasteRecord[], start: Date, end: Date): B
       quantity: Number(value.toFixed(1)),
       color: CATEGORY_COLORS[key as WasteCategory] || '#999',
       pct: ((value / total) * 100).toFixed(1),
+      unit: 'kg',
     }))
     .sort((a, b) => b.quantity - a.quantity);
 }
@@ -145,23 +152,59 @@ function CustomTooltip({
         <span className="text-foreground text-sm font-semibold">{d.category}</span>
       </div>
       <p className="text-muted-foreground mt-1 text-sm">
-        <span className="text-foreground font-bold">{d.quantity}</span> kg
+        <span className="text-foreground font-bold">{d.quantity}</span> {d.unit}
         <span className="text-muted-foreground ml-2">({d.pct}%)</span>
       </p>
     </div>
   );
 }
 
-function GradientDefs({ data }: { data: BarItem[] }) {
+function wrapLabel(label: string, maxChars: number): string[] {
+  const lines: string[] = [];
+  let remaining = label;
+  while (remaining.length > maxChars) {
+    const breakAt = remaining.lastIndexOf(' ', maxChars);
+    const breakAtAlt = remaining.lastIndexOf('/', maxChars);
+    const breakAtAmp = remaining.lastIndexOf('&', maxChars);
+    const bestBreak = Math.max(breakAt, breakAtAlt, breakAtAmp);
+    if (bestBreak <= 0) {
+      lines.push(remaining.slice(0, maxChars));
+      remaining = remaining.slice(maxChars);
+    } else {
+      lines.push(remaining.slice(0, bestBreak));
+      remaining = remaining.slice(bestBreak + 1);
+    }
+  }
+  if (remaining) lines.push(remaining);
+  return lines;
+}
+
+function CustomXAxisTick({
+  x,
+  y,
+  payload,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+}) {
+  if (!payload) return null;
+  const lines = wrapLabel(payload.value, 11);
   return (
-    <defs>
-      {data.map((entry, i) => (
-        <linearGradient key={i} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={entry.color} stopOpacity={0.9} />
-          <stop offset="100%" stopColor={entry.color} stopOpacity={0.4} />
-        </linearGradient>
+    <text
+      x={x}
+      y={(y ?? 0) + 4}
+      fill="hsl(var(--muted-foreground))"
+      fontSize={11}
+      fontWeight={500}
+      textAnchor="middle"
+    >
+      {lines.map((line, i) => (
+        <tspan key={i} x={x} dy={i === 0 ? 0 : 13}>
+          {line}
+        </tspan>
       ))}
-    </defs>
+    </text>
   );
 }
 
@@ -200,10 +243,9 @@ function WasteBarChart({
           <ResponsiveContainer width="100%" height={320}>
             <BarChart
               data={data}
-              margin={{ left: -8, right: 16, top: 12, bottom: 8 }}
-              barCategoryGap="30%"
+              margin={{ left: 0, right: 16, top: 12, bottom: 100 }}
+              barCategoryGap="25%"
             >
-              <GradientDefs data={data} />
               <CartesianGrid
                 strokeDasharray="4 4"
                 stroke="hsl(var(--border))"
@@ -213,28 +255,25 @@ function WasteBarChart({
               <XAxis
                 type="category"
                 dataKey="category"
-                tick={{
-                  fontSize: 11,
-                  fill: 'hsl(var(--muted-foreground))',
-                  fontWeight: 500,
-                }}
+                tick={<CustomXAxisTick />}
                 axisLine={false}
                 tickLine={false}
                 tickMargin={8}
-                minTickGap={8}
+                interval={0}
+                height={100}
               />
               <YAxis
                 type="number"
                 tick={{
-                  fontSize: 11,
+                  fontSize: 12,
                   fill: 'hsl(var(--muted-foreground))',
-                  fontWeight: 500,
+                  fontWeight: 600,
                 }}
                 axisLine={false}
                 tickLine={false}
+                width={64}
                 unit=" kg"
-                width={48}
-                tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))}
+                tickFormatter={(v: number) => Intl.NumberFormat('en-US').format(v)}
               />
               <Tooltip
                 content={<CustomTooltip />}
@@ -243,13 +282,13 @@ function WasteBarChart({
               <Bar
                 dataKey="quantity"
                 radius={[8, 8, 0, 0]}
-                maxBarSize={48}
+                maxBarSize={100}
                 animationBegin={0}
                 animationDuration={600}
                 animationEasing="ease-out"
               >
-                {data.map((_, index) => (
-                  <Cell key={index} fill={`url(#grad-${index})`} />
+                {data.map((entry, index) => (
+                  <Cell key={index} fill={entry.color} />
                 ))}
               </Bar>
             </BarChart>
