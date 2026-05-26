@@ -110,7 +110,7 @@ export const WasteRecord = () => {
 
     const missing: string[] = [];
     if (!form.category) missing.push('Category');
-    if (!form.quantity) missing.push('Quantity');
+    if (!form.quantity || Number(form.quantity) <= 0) missing.push('Quantity');
     if (!form.unit) missing.push('Unit');
     if (!form.reportedAt) missing.push('Date');
 
