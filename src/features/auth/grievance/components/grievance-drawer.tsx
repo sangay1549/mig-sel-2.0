@@ -1,6 +1,14 @@
 import { useState, useRef } from 'react';
 import { X, MapPin, Camera, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DialogRoot,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useGeoLocation } from '../hooks/use-geo-location';
 import { uploadGrievanceImage } from './use-upload-image';
 import { useCreateGrievance } from './use-create-grievance';
@@ -19,10 +27,16 @@ interface Props {
 }
 
 export const GrievanceDrawer = ({ onClose }: Props) => {
-  const { coords: gpsCoords, error: geoError, loading: geoLoading } = useGeoLocation();
+  const {
+    coords: gpsCoords,
+    error: geoError,
+    loading: geoLoading,
+    requestLocation,
+  } = useGeoLocation();
   const { user } = useCurrentUser();
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const mutation = useCreateGrievance();
 
@@ -102,7 +116,14 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
             submitReport();
           }}
         >
-          <div className="bg-surface-container border-outline-variant flex items-center gap-3 rounded-lg border p-3">
+          <div
+            onClick={() => {
+              if (geoError?.toLowerCase().includes('permission denied')) {
+                setShowPermissionDialog(true);
+              }
+            }}
+            className="bg-surface-container border-outline-variant flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-gray-50"
+          >
             <MapPin className="text-primary h-5 w-5 shrink-0" />
             <div className="text-body-sm">
               <p className="font-bold">Your Location</p>
@@ -117,6 +138,32 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
               </p>
             </div>
           </div>
+
+          <DialogRoot open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Turn on location?</DialogTitle>
+                <DialogDescription>
+                  Your location is currently turned off. Enable it to submit a report with your
+                  current position.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPermissionDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    setShowPermissionDialog(false);
+                    requestLocation();
+                  }}
+                >
+                  Yes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </DialogRoot>
 
           <div className="space-y-2">
             <label className="text-label-sm text-muted-foreground font-bold uppercase">

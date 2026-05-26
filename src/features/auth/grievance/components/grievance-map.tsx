@@ -22,6 +22,15 @@ import {
 } from 'lucide-react';
 import { DirectionsControl } from './directions-control';
 import { ImageLightbox } from './image-lightbox';
+import {
+  DialogRoot,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 const SARPANG_BOUNDS = L.latLngBounds([26.7032, 89.9213], [27.2401, 90.7235]);
 const DEFAULT_CENTER = { lat: 26.9312, lng: 90.4795 };
@@ -374,6 +383,7 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
   const map = useMap();
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -383,21 +393,9 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
     };
   }, []);
 
-  const handleLocate = useCallback(() => {
+  const requestLocation = useCallback(() => {
     setLocating(true);
     setError(null);
-
-    if (detectedCoords) {
-      map.flyTo([detectedCoords.lat, detectedCoords.lng], 15, { duration: 1.5 });
-      setLocating(false);
-      return;
-    }
-
-    if (!navigator.geolocation) {
-      setLocating(false);
-      setError('Geolocation not supported by your browser.');
-      return;
-    }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -410,7 +408,7 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
         if (!mountedRef.current) return;
         setLocating(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setError('Location permission denied. Enable access in browser settings.');
+          setShowPermissionDialog(true);
         } else if (err.code === err.POSITION_UNAVAILABLE) {
           setError('GPS/location unavailable. Make sure location is turned on.');
         } else {
@@ -419,7 +417,29 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
     );
-  }, [map, detectedCoords]);
+  }, [map]);
+
+  const handleLocate = useCallback(() => {
+    setError(null);
+    setShowPermissionDialog(false);
+
+    if (detectedCoords) {
+      map.flyTo([detectedCoords.lat, detectedCoords.lng], 15, { duration: 1.5 });
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setError('Geolocation not supported by your browser.');
+      return;
+    }
+
+    requestLocation();
+  }, [map, detectedCoords, requestLocation]);
+
+  const handleConfirmEnableLocation = useCallback(() => {
+    setShowPermissionDialog(false);
+    requestLocation();
+  }, [requestLocation]);
 
   return (
     <div className="absolute right-4 bottom-28 z-[1000]">
@@ -459,6 +479,25 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
           </svg>
         )}
       </button>
+
+      <DialogRoot open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Turn on location?</DialogTitle>
+            <DialogDescription>
+              Your location is currently turned off. Enable it to see your position on the map.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPermissionDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="default" onClick={handleConfirmEnableLocation}>
+              Yes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </DialogRoot>
     </div>
   );
 }

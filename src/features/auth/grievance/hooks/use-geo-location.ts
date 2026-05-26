@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface GeoLocationState {
   coords: { lat: number; lng: number } | null;
@@ -102,5 +102,33 @@ export const useGeoLocation = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return state;
+  const requestLocation = useCallback(() => {
+    if (!geoAvailable) return;
+
+    setState({ coords: null, accuracy: null, error: null, loading: true });
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!mountedRef.current) return;
+        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setCachedPosition(coords.lat, coords.lng);
+        setState({ coords, accuracy: position.coords.accuracy, error: null, loading: false });
+      },
+      (err) => {
+        if (!mountedRef.current) return;
+        let message = 'Failed to detect location';
+        if (err.code === err.PERMISSION_DENIED) {
+          message = 'Location permission denied. Enable location access in your browser settings.';
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          message = 'Location unavailable. Make sure GPS/location is turned on.';
+        } else if (err.code === err.TIMEOUT) {
+          message = 'Location request timed out. Try again.';
+        }
+        setState({ coords: null, accuracy: null, error: message, loading: false });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  }, [geoAvailable]);
+
+  return { ...state, requestLocation };
 };
