@@ -7,8 +7,10 @@ import { InspectorPage } from './inspector-page';
 import { NotFoundPage } from './not-found-page';
 import { AuthCallbackPage } from './auth-callback-page';
 import { MapPage } from './map-page';
+import { ReportPage } from './report-page';
 import { ComplaintDetailPage } from './complaint-detail-page';
 import { LeaderboardPage } from './leaderboard-page';
+import { CommunityPage } from './community-page';
 import { ShopPage } from './shop-page';
 import { ProtectedRoute } from '@/components/layout/protected-route';
 import { AdminRoute } from '@/components/layout/admin-route';
@@ -41,9 +43,19 @@ export const router = createBrowserRouter([
     children: [{ index: true, element: <MapPage /> }],
   },
   {
+    path: '/report',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <ReportPage /> }],
+  },
+  {
     path: '/leaderboard',
     element: <ProtectedRoute />,
     children: [{ index: true, element: <LeaderboardPage /> }],
+  },
+  {
+    path: '/community',
+    element: <ProtectedRoute />,
+    children: [{ index: true, element: <CommunityPage /> }],
   },
   {
     path: '/shop',

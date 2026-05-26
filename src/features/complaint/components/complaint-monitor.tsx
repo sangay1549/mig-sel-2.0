@@ -19,6 +19,7 @@ import { useComplaints, complaintKeys } from '@/features/complaint/api/use-compl
 import { grievanceKeys } from '@/features/auth/grievance/api/use-grievances';
 import { leaderboardKeys } from '@/features/gamification/api/use-leaderboard';
 import { profileKeys } from '@/features/gamification/api/use-user-profile';
+import { communityKeys } from '@/features/community/api/use-community-feed';
 import { ImageLightbox } from '@/features/auth/grievance/components/image-lightbox';
 import { Pagination } from '@/components/ui/pagination';
 import {
@@ -123,6 +124,7 @@ export const ComplaintMonitor = () => {
       queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
       queryClient.invalidateQueries({ queryKey: profileKeys.current() });
       queryClient.invalidateQueries({ queryKey: complaintKeys.all });
+      queryClient.invalidateQueries({ queryKey: communityKeys.all });
     } catch (err: unknown) {
       queryClient.invalidateQueries({ queryKey: complaintKeys.all });
       const message =

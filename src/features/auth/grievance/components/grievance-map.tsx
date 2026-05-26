@@ -19,7 +19,9 @@ import {
   ChevronDown,
   Check,
   Link2,
+  Grid3x3 as Grid3x3Icon,
 } from 'lucide-react';
+import { useMapFilters, type MapFilters, type MapStyleOption } from '../hooks/use-map-filters';
 import { DirectionsControl } from './directions-control';
 import { ImageLightbox } from './image-lightbox';
 import {
@@ -287,15 +289,6 @@ function categoryLabel(category: string): string {
   return CATEGORY_LABELS[category] ?? category;
 }
 
-const categoryConfig = [
-  { key: 'all', label: 'All', color: '#154212' },
-  { key: 'road', label: 'Road', color: '#d97706' },
-  { key: 'garbage', label: 'Waste', color: '#2563eb' },
-  { key: 'lighting', label: 'Lighting', color: '#ca8a04' },
-  { key: 'drainage', label: 'Drainage', color: '#0891b2' },
-  { key: 'other', label: 'Other', color: '#154212' },
-];
-
 function ZoomControls() {
   const map = useMap();
 
@@ -377,6 +370,36 @@ function UserLocationDot({
   }, [detectedCoords, map, accuracy]);
 
   return null;
+}
+
+function UserMarker({ userLocation }: { userLocation: { lat: number; lng: number } | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!userLocation) return;
+    map.flyTo([userLocation.lat, userLocation.lng], 15, { animate: true, duration: 1.5 });
+  }, [userLocation, map]);
+
+  const icon = useMemo(
+    () =>
+      L.divIcon({
+        className: '',
+        html: `
+          <div class="gps-marker">
+            <div class="gps-ring" />
+            <div class="gps-ring-delayed" />
+            <div class="gps-dot" />
+          </div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+      }),
+    [],
+  );
+
+  if (!userLocation) return null;
+
+  return <Marker position={[userLocation.lat, userLocation.lng]} icon={icon} />;
 }
 
 function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: number } | null }) {
@@ -612,19 +635,17 @@ function MapSearch({ map }: { map: L.Map }) {
 }
 
 const MAP_STYLES = [
-  { key: 'street', label: 'Map', icon: MapIcon },
-  { key: 'osm', label: 'OSM', icon: MapIcon },
-  { key: 'satellite', label: 'Sat', icon: SatelliteIcon },
+  { key: 'standard', label: 'Standard', icon: MapIcon },
+  { key: 'satellite', label: 'Satellite', icon: SatelliteIcon },
+  { key: 'infrastructure', label: 'Infra', icon: Grid3x3Icon },
 ] as const;
-
-type MapStyle = (typeof MAP_STYLES)[number]['key'];
 
 function MapStyleSwitcher({
   mapStyle,
   onChange,
 }: {
-  mapStyle: MapStyle;
-  onChange: (style: MapStyle) => void;
+  mapStyle: MapStyleOption;
+  onChange: (style: MapStyleOption) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -978,9 +999,20 @@ function GrievanceMarkers({
   });
 }
 
-export const GrievanceMap = () => {
-  const [activeFilter, setActiveFilter] = useState<string>('all');
-  const [mapStyle, setMapStyle] = useState<MapStyle>('osm');
+interface GrievanceMapProps {
+  filters?: MapFilters;
+  onMapStyleChange?: (style: MapStyleOption) => void;
+  userLocation?: { lat: number; lng: number } | null;
+}
+
+export const GrievanceMap = ({
+  filters: filtersProp,
+  onMapStyleChange: onMapStyleChangeProp,
+  userLocation = null,
+}: GrievanceMapProps) => {
+  const defaultFilters = useMapFilters();
+  const filters = filtersProp ?? defaultFilters.filters;
+  const onMapStyleChange = onMapStyleChangeProp ?? defaultFilters.setMapStyle;
   const [directionsTarget, setDirectionsTarget] = useState<{
     lat: number;
     lng: number;
@@ -1005,37 +1037,36 @@ export const GrievanceMap = () => {
     resolved_image_url: g.resolved_image_url,
     parent_id: g.parent_id,
     reporter_id: g.reporter_id,
+    created_at: g.created_at,
   }));
 
-  const filteredGrievances =
-    activeFilter === 'all'
-      ? mappedGrievances
-      : mappedGrievances.filter((g) => g.category === activeFilter);
+  const [cutoffs] = useState(() => {
+    const now = Date.now();
+    return {
+      cutoff24h: now - 24 * 60 * 60 * 1000,
+      cutoffWeek: now - 7 * 24 * 60 * 60 * 1000,
+    };
+  });
+
+  const filteredGrievances = mappedGrievances.filter((g) => {
+    const cat = g.category as keyof typeof filters.categories;
+    if (!filters.categories[cat]) return false;
+
+    if (!filters.showResolved && (g.status === 'resolved' || g.status === 'closed')) {
+      return false;
+    }
+
+    if (filters.timeframe !== 'all') {
+      const created = new Date(g.created_at).getTime();
+      if (filters.timeframe === '24h' && created < cutoffs.cutoff24h) return false;
+      if (filters.timeframe === 'week' && created < cutoffs.cutoffWeek) return false;
+    }
+
+    return true;
+  });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex scrollbar-none gap-2 overflow-x-auto border-b border-gray-100 px-4 py-3">
-        {categoryConfig.map(({ key, label, color }) => (
-          <button
-            key={key}
-            onClick={() => setActiveFilter(key)}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold tracking-wider uppercase transition-all duration-200 ${
-              activeFilter === key
-                ? 'text-white shadow-sm'
-                : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50'
-            }`}
-            style={
-              activeFilter === key ? { backgroundColor: color, borderColor: color } : undefined
-            }
-          >
-            {key !== 'all' && (
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-            )}
-            {label}
-          </button>
-        ))}
-      </div>
-
       <div ref={mapContainerRef} className="group relative w-full flex-1 overflow-hidden">
         {isLoading && (
           <div className="absolute inset-0 z-[1001] flex items-center justify-center bg-white/60">
@@ -1066,22 +1097,22 @@ export const GrievanceMap = () => {
           <MapInit />
           <ScaleControl />
 
-          {mapStyle === 'street' ? (
+          {filters.mapStyle === 'standard' ? (
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
               maxZoom={20}
             />
-          ) : mapStyle === 'osm' ? (
-            <TileLayer
-              url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              maxZoom={19}
-            />
-          ) : (
+          ) : filters.mapStyle === 'satellite' ? (
             <TileLayer
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/World_Imagery_with_Labels/MapServer/tile/{z}/{y}/{x}"
               attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+              maxZoom={20}
+            />
+          ) : (
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
               maxZoom={20}
             />
           )}
@@ -1090,20 +1121,11 @@ export const GrievanceMap = () => {
 
           <div className="absolute top-4 right-3 left-3 z-[1000] flex items-start gap-2 sm:left-4">
             <SearchBox />
-            <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
-              <MapStyleSwitcher mapStyle={mapStyle} onChange={setMapStyle} />
-              <div className="hidden items-center gap-1.5 rounded-xl bg-white/90 px-2 py-1.5 text-[10px] font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:flex md:gap-2 md:px-3 md:py-2 md:text-xs">
-                <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 md:h-2 md:w-2" />
-                </span>
-                Live
-              </div>
-              <FullscreenButton containerRef={mapContainerRef} />
-            </div>
           </div>
 
           <UserLocationDot coords={detectedCoords} accuracy={accuracy} />
+
+          <UserMarker userLocation={userLocation} />
 
           <LocateButton coords={detectedCoords} />
 
@@ -1124,7 +1146,19 @@ export const GrievanceMap = () => {
 
           <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-black/[0.03]" />
 
-          <div className="absolute bottom-4 left-1/2 z-[1000] flex -translate-x-1/2 items-center gap-1 rounded-xl bg-white/90 px-2 py-1.5 text-[9px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:right-4 sm:bottom-52 sm:left-auto sm:translate-x-0 md:gap-1.5 md:px-3 md:py-2 md:text-[10px]">
+          <div className="absolute top-4 right-4 z-[1000] flex items-center gap-1.5 md:gap-2">
+            <MapStyleSwitcher mapStyle={filters.mapStyle} onChange={onMapStyleChange} />
+            <div className="hidden items-center gap-1.5 rounded-xl bg-white/90 px-2 py-1.5 text-[10px] font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:flex md:gap-2 md:px-3 md:py-2 md:text-xs">
+              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 md:h-2 md:w-2" />
+              </span>
+              Live
+            </div>
+            <FullscreenButton containerRef={mapContainerRef} />
+          </div>
+
+          <div className="absolute right-4 bottom-4 z-[1000] flex items-center gap-1 rounded-xl bg-white/90 px-2 py-1.5 text-[9px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md md:gap-1.5 md:px-3 md:py-2 md:text-[10px]">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"

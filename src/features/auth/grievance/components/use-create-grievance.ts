@@ -20,7 +20,11 @@ export const useCreateGrievance = () => {
 
   return useMutation({
     mutationFn: async (input: GrievanceInput) => {
-      const { data, error } = await supabase.from('grievances').insert(input).select().single();
+      const { data, error } = await supabase
+        .from('grievances')
+        .insert({ ...input, status: 'pending' })
+        .select()
+        .single();
 
       if (error) throw error;
 

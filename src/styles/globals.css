@@ -233,6 +233,53 @@
   font-family: 'Manrope Variable', sans-serif !important;
 }
 
+@keyframes gps-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
+.gps-marker {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.gps-marker .gps-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #3b82f6;
+  animation: gps-pulse 2s ease-out infinite;
+}
+
+.gps-marker .gps-ring-delayed {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #3b82f6;
+  animation: gps-pulse 2s ease-out 0.6s infinite;
+}
+
+.gps-marker .gps-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 2.5px solid #fff;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
+  position: relative;
+  z-index: 1;
+}
+
 .leaflet-control-zoom {
   border: none !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
