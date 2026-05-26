@@ -291,10 +291,7 @@ function ZoomControls() {
   const map = useMap();
 
   return (
-    <div
-      className="absolute right-0 bottom-0 flex flex-col gap-px"
-      style={{ zIndex: 1000, marginBottom: 60, marginRight: 8 }}
-    >
+    <div className="absolute right-4 bottom-4 z-[1000] flex flex-col gap-px">
       <button
         onClick={() => map.zoomIn()}
         title="Zoom in"
@@ -425,10 +422,7 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
   }, [map, detectedCoords]);
 
   return (
-    <div
-      className="absolute right-0 bottom-0"
-      style={{ zIndex: 1000, marginBottom: 116, marginRight: 8 }}
-    >
+    <div className="absolute right-4 bottom-28 z-[1000]">
       {error && (
         <div
           onClick={() => setError(null)}
@@ -545,10 +539,7 @@ function MapSearch({ map }: { map: L.Map }) {
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="absolute top-4 left-4 z-[1000] w-[calc(100vw-2rem)] max-w-[320px]"
-    >
+    <div ref={containerRef} className="min-w-0 flex-1">
       <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 shadow-lg ring-1 ring-gray-200/60 backdrop-blur-md">
         <Search className="h-4 w-4 shrink-0 text-gray-400" />
         <input
@@ -987,7 +978,7 @@ export const GrievanceMap = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-3">
+      <div className="flex scrollbar-none gap-2 overflow-x-auto border-b border-gray-100 px-4 py-3">
         {categoryConfig.map(({ key, label, color }) => (
           <button
             key={key}
@@ -1061,7 +1052,20 @@ export const GrievanceMap = () => {
 
           <ZoomControls />
 
-          <SearchBox />
+          <div className="absolute top-4 right-3 left-3 z-[1000] flex items-start gap-2 sm:left-4">
+            <SearchBox />
+            <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+              <MapStyleSwitcher mapStyle={mapStyle} onChange={setMapStyle} />
+              <div className="hidden items-center gap-1.5 rounded-xl bg-white/90 px-2 py-1.5 text-[10px] font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:flex md:gap-2 md:px-3 md:py-2 md:text-xs">
+                <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 md:h-2 md:w-2" />
+                </span>
+                Live
+              </div>
+              <FullscreenButton containerRef={mapContainerRef} />
+            </div>
+          </div>
 
           <UserLocationDot coords={detectedCoords} accuracy={accuracy} />
 
@@ -1084,19 +1088,7 @@ export const GrievanceMap = () => {
 
           <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-black/[0.03]" />
 
-          <div className="absolute top-4 right-4 z-[1000] flex items-center gap-1.5 md:gap-2">
-            <MapStyleSwitcher mapStyle={mapStyle} onChange={setMapStyle} />
-            <div className="hidden items-center gap-1.5 rounded-xl bg-white/90 px-2 py-1.5 text-[10px] font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:flex md:gap-2 md:px-3 md:py-2 md:text-xs">
-              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500 md:h-2 md:w-2" />
-              </span>
-              Live
-            </div>
-            <FullscreenButton containerRef={mapContainerRef} />
-          </div>
-
-          <div className="absolute right-4 bottom-4 z-[1000] flex items-center gap-1 rounded-xl bg-white/90 px-2 py-1.5 text-[9px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md md:gap-1.5 md:px-3 md:py-2 md:text-[10px]">
+          <div className="absolute bottom-4 left-1/2 z-[1000] flex -translate-x-1/2 items-center gap-1 rounded-xl bg-white/90 px-2 py-1.5 text-[9px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:right-4 sm:bottom-52 sm:left-auto sm:translate-x-0 md:gap-1.5 md:px-3 md:py-2 md:text-[10px]">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"

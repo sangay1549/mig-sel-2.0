@@ -9,7 +9,6 @@ import {
   Lock,
   Recycle,
   TreePine,
-  Heart,
   BookOpen,
   Award,
 } from 'lucide-react';
@@ -54,13 +53,6 @@ const ITEMS = [
     comingSoon: true,
   },
   {
-    icon: Heart,
-    title: 'Health Checkup Pass',
-    description: 'Free basic health screening at city clinics',
-    cost: 35,
-    comingSoon: true,
-  },
-  {
     icon: BookOpen,
     title: 'Library Membership',
     description: 'Premium library membership with extended borrowing',
@@ -98,57 +90,65 @@ export const ShopPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="mx-auto max-w-2xl px-4 py-6">
-        <div className="mb-6 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-gray-600">
+      <div className="mx-auto max-w-2xl px-3 py-4 sm:px-4 sm:py-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2 sm:mb-6 sm:flex-nowrap sm:justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="-ml-2 text-gray-600 sm:ml-0"
+          >
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back
           </Button>
           {profile && (
-            <div className="rounded-xl border bg-white px-4 py-2 text-right shadow-sm">
+            <div className="ml-auto rounded-xl border bg-white px-3 py-1.5 text-right shadow-sm sm:px-4 sm:py-2">
               <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
                 Your Points
               </p>
-              <p className="text-xl font-bold text-gray-900">{profile.points}</p>
+              <p className="text-lg font-bold text-gray-900 sm:text-xl">{profile.points}</p>
             </div>
           )}
         </div>
 
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg">
-            <ShoppingBag className="h-8 w-8 text-white" />
+        <div className="mb-5 text-center sm:mb-6">
+          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg sm:h-16 sm:w-16">
+            <ShoppingBag className="h-7 w-7 text-white sm:h-8 sm:w-8" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Points Shop</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Points Shop</h1>
+          <p className="mt-1 text-xs text-gray-500 sm:text-sm">
             Redeem your points for city services and partner rewards
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {paginatedItems.map((item) => {
             const Icon = item.icon;
             return (
               <div
                 key={item.title}
-                className="relative overflow-hidden rounded-xl border bg-white p-5 shadow-sm transition-all"
+                className="relative overflow-hidden rounded-xl border bg-white p-4 shadow-sm transition-all sm:p-5"
               >
                 {item.comingSoon && (
-                  <div className="absolute top-0 right-0 flex items-center gap-1 rounded-bl-lg bg-amber-100 px-2.5 py-1 text-[10px] font-bold tracking-wider text-amber-700 uppercase">
+                  <div className="absolute top-0 right-0 flex items-center gap-1 rounded-bl-lg bg-amber-100 px-2 py-1 text-[10px] font-bold tracking-wider text-amber-700 uppercase sm:px-2.5">
                     <Lock className="h-3 w-3" />
                     Coming Soon
                   </div>
                 )}
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-50">
-                    <Icon className="h-6 w-6 text-green-600" />
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-50 sm:h-12 sm:w-12">
+                    <Icon className="h-5 w-5 text-green-600 sm:h-6 sm:w-6" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-gray-900">{item.title}</h3>
-                    <p className="mt-0.5 text-sm text-gray-500">{item.description}</p>
-                    <div className="mt-3 flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-gray-900 sm:text-base">{item.title}</h3>
+                    <p className="mt-0.5 text-xs text-gray-500 sm:text-sm">{item.description}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700 sm:px-3">
                         <ShoppingBag className="h-3 w-3" />
-                        {item.cost} points
+                        <span className="blur-sm select-none" aria-hidden="true">
+                          {item.cost}
+                        </span>
+                        <span className="sr-only">{item.cost}</span> points
                       </span>
                       <Button
                         disabled={item.comingSoon}
@@ -172,7 +172,6 @@ export const ShopPage = () => {
             totalItems={ITEMS.length}
             itemsPerPage={ITEMS_PER_PAGE}
             onPageChange={setCurrentPage}
-            onItemsPerPageChange={() => {}}
           />
         </div>
 

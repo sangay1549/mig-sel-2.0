@@ -16,26 +16,30 @@ export function Pagination({
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
-  onItemsPerPageChange: (count: number) => void;
+  onItemsPerPageChange?: (count: number) => void;
 }) {
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
       <div className="flex items-center gap-3">
-        <span className="text-muted-foreground text-sm">Rows per page:</span>
-        <select
-          value={itemsPerPage}
-          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="border-input bg-background text-foreground focus:ring-ring/30 h-8 rounded-lg border px-2 text-sm transition-all outline-none focus:ring-2"
-        >
-          {ITEMS_PER_PAGE_OPTIONS.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
+        {onItemsPerPageChange && (
+          <>
+            <span className="text-muted-foreground text-sm">Rows per page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+              className="border-input bg-background text-foreground focus:ring-ring/30 h-8 rounded-lg border px-2 text-sm transition-all outline-none focus:ring-2"
+            >
+              {ITEMS_PER_PAGE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
         <span className="text-muted-foreground text-sm">
           {startItem}–{endItem} of {totalItems}
         </span>
