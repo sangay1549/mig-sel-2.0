@@ -438,8 +438,8 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
 
   const handleConfirmEnableLocation = useCallback(() => {
     setShowPermissionDialog(false);
-    requestLocation();
-  }, [requestLocation]);
+    setError('Location permission denied. Enable location access in your browser settings.');
+  }, []);
 
   return (
     <div className="absolute right-4 bottom-28 z-[1000]">

@@ -32,6 +32,7 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
     error: geoError,
     loading: geoLoading,
     requestLocation,
+    permissionDenied,
   } = useGeoLocation();
   const { user } = useCurrentUser();
   const [isUploading, setIsUploading] = useState(false);
@@ -54,7 +55,12 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
     }
 
     if (!gpsCoords) {
-      setMessage({ type: 'error', text: 'Location not available. Please wait for GPS detection.' });
+      setMessage({
+        type: 'error',
+        text: permissionDenied
+          ? 'Location permission denied. Enable it in your browser settings.'
+          : 'Location not available. Please wait for GPS detection.',
+      });
       return;
     }
 
@@ -118,18 +124,28 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
         >
           <div
             onClick={() => {
-              if (geoError?.toLowerCase().includes('permission denied')) {
+              if (!gpsCoords && !permissionDenied) {
                 setShowPermissionDialog(true);
               }
             }}
-            className="bg-surface-container border-outline-variant flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-gray-50"
+            className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-gray-50 ${
+              permissionDenied
+                ? 'border-red-300 bg-red-50'
+                : 'bg-surface-container border-outline-variant'
+            }`}
           >
-            <MapPin className="text-primary h-5 w-5 shrink-0" />
+            <MapPin
+              className={`h-5 w-5 shrink-0 ${permissionDenied ? 'text-red-500' : 'text-primary'}`}
+            />
             <div className="text-body-sm">
               <p className="font-bold">Your Location</p>
-              <p className="text-muted-foreground">
+              <p
+                className={`${permissionDenied ? 'font-medium text-red-600' : 'text-muted-foreground'}`}
+              >
                 {geoError
-                  ? geoError
+                  ? permissionDenied
+                    ? 'Enable location in your browser settings'
+                    : geoError
                   : gpsCoords
                     ? `${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}`
                     : geoLoading
@@ -139,31 +155,33 @@ export const GrievanceDrawer = ({ onClose }: Props) => {
             </div>
           </div>
 
-          <DialogRoot open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
-            <DialogContent className="max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Turn on location?</DialogTitle>
-                <DialogDescription>
-                  Your location is currently turned off. Enable it to submit a report with your
-                  current position.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowPermissionDialog(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="default"
-                  onClick={() => {
-                    setShowPermissionDialog(false);
-                    requestLocation();
-                  }}
-                >
-                  Yes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </DialogRoot>
+          {!permissionDenied && (
+            <DialogRoot open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Turn on location?</DialogTitle>
+                  <DialogDescription>
+                    Your location is currently turned off. Enable it to submit a report with your
+                    current position.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowPermissionDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      setShowPermissionDialog(false);
+                      requestLocation();
+                    }}
+                  >
+                    Yes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </DialogRoot>
+          )}
 
           <div className="space-y-2">
             <label className="text-label-sm text-muted-foreground font-bold uppercase">
