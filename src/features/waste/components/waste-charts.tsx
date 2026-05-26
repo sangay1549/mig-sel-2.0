@@ -271,7 +271,7 @@ function WasteBarChart({
                 }}
                 axisLine={false}
                 tickLine={false}
-                width={64}
+                width={80}
                 unit=" kg"
                 tickFormatter={(v: number) => Intl.NumberFormat('en-US').format(v)}
               />
