@@ -1,6 +1,6 @@
 import { Recycle, ClipboardList, LogOut, ChartLine, X, Map, FileText, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { LeafIcon } from '@/components/ui/leaf-icon';
+
 import { cn } from '@/lib/utils';
 import { useSignOut } from '@/features/auth/api/use-sign-out';
 
@@ -37,8 +37,8 @@ export function DashboardSidebar({
       )}
     >
       <div className="flex h-16 shrink-0 items-center gap-3 border-b px-5">
-        <div className="bg-primary flex h-9 w-9 items-center justify-center rounded-xl shadow-xs">
-          <LeafIcon className="text-primary-foreground h-5 w-5" />
+        <div className="flex items-center justify-center">
+          <img src="/3d logo.png" alt="Logo" className="h-10 w-auto rounded-lg object-contain" />
         </div>
         <div className="flex items-center gap-2.5">
           <span className="text-foreground text-lg font-bold tracking-tight">Migsel</span>

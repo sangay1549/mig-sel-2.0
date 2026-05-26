@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { LeafIcon } from '@/components/ui/leaf-icon';
+
 import { useSignInWithGoogle } from '@/features/auth/api/use-sign-in-with-google';
 
 export const LoginPage = () => {
@@ -22,7 +22,7 @@ export const LoginPage = () => {
       <div className="relative w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="mb-4 inline-flex items-center justify-center">
-            <LeafIcon />
+            <img src="/3d logo.png" alt="Logo" className="h-16 w-auto rounded-lg object-contain" />
           </div>
           <h1 className="text-foreground text-2xl font-semibold tracking-tight">mig-sel</h1>
           <p className="text-muted-foreground/60 mt-1.5 text-xs tracking-wide uppercase">

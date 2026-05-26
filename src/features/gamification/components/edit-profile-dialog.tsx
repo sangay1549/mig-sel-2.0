@@ -59,6 +59,7 @@ export const EditProfileDialog = () => {
     }
   };
 
+  const hasChanges = displayName !== (profile?.username ?? '') || avatarFile !== null;
   const isSaving = mutation.isPending || uploading;
 
   return (
@@ -125,7 +126,7 @@ export const EditProfileDialog = () => {
               Cancel
             </Button>
           </DialogClose>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
             {isSaving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>

@@ -78,6 +78,9 @@ export const LeaderboardPage = () => {
     }
   };
 
+  const hasNameChanged = !hasUsername && displayName !== (profile?.username ?? '');
+  const hasAvatarChanged = avatarFile !== null;
+  const hasChanges = hasNameChanged || hasAvatarChanged;
   const isSaving = mutation.isPending;
 
   return (
@@ -197,7 +200,7 @@ export const LeaderboardPage = () => {
 
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || !hasChanges}
             className="w-full rounded-xl font-bold shadow-sm"
           >
             {isSaving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}

@@ -13,15 +13,10 @@ import {
   Minus,
   Maximize2,
   Minimize2,
-  Map as MapIcon,
-  Satellite as SatelliteIcon,
   ArrowRight,
-  ChevronDown,
-  Check,
   Link2,
-  Grid3x3 as Grid3x3Icon,
 } from 'lucide-react';
-import { useMapFilters, type MapFilters, type MapStyleOption } from '../hooks/use-map-filters';
+import { useMapFilters, type MapFilters } from '../hooks/use-map-filters';
 import { DirectionsControl } from './directions-control';
 import { ImageLightbox } from './image-lightbox';
 import {
@@ -293,7 +288,7 @@ function ZoomControls() {
   const map = useMap();
 
   return (
-    <div className="absolute right-4 bottom-4 z-[1000] flex flex-col gap-px">
+    <div className="absolute right-4 bottom-28 z-[1000] flex flex-col gap-px">
       <button
         onClick={() => map.zoomIn()}
         title="Zoom in"
@@ -464,7 +459,7 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
   }, []);
 
   return (
-    <div className="absolute right-4 bottom-28 z-[1000]">
+    <div className="absolute right-4 bottom-52 z-[1000]">
       {error && (
         <div
           onClick={() => setError(null)}
@@ -628,73 +623,6 @@ function MapSearch({ map }: { map: L.Map }) {
               <span className="line-clamp-2 text-gray-700">{result.display_name}</span>
             </button>
           ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const MAP_STYLES = [
-  { key: 'standard', label: 'Standard', icon: MapIcon },
-  { key: 'satellite', label: 'Satellite', icon: SatelliteIcon },
-  { key: 'infrastructure', label: 'Infra', icon: Grid3x3Icon },
-] as const;
-
-function MapStyleSwitcher({
-  mapStyle,
-  onChange,
-}: {
-  mapStyle: MapStyleOption;
-  onChange: (style: MapStyleOption) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const current = MAP_STYLES.find((s) => s.key === mapStyle)!;
-  const Icon = current.icon;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-xs font-semibold text-gray-700 shadow-md ring-1 ring-gray-200/50 backdrop-blur-md transition-all hover:bg-white"
-      >
-        <Icon className="h-3.5 w-3.5" />
-        {current.label}
-        <ChevronDown className="h-3 w-3 text-gray-400" />
-      </button>
-      {open && (
-        <div className="absolute top-full right-0 mt-1 w-32 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-gray-200/50">
-          {MAP_STYLES.map((s) => {
-            const ItemIcon = s.icon;
-            const isActive = mapStyle === s.key;
-            return (
-              <button
-                key={s.key}
-                onClick={() => {
-                  onChange(s.key);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold transition-all ${
-                  isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <ItemIcon className="h-3.5 w-3.5" />
-                {s.label}
-                {isActive && <Check className="ml-auto h-3.5 w-3.5" />}
-              </button>
-            );
-          })}
         </div>
       )}
     </div>
@@ -1001,18 +929,12 @@ function GrievanceMarkers({
 
 interface GrievanceMapProps {
   filters?: MapFilters;
-  onMapStyleChange?: (style: MapStyleOption) => void;
   userLocation?: { lat: number; lng: number } | null;
 }
 
-export const GrievanceMap = ({
-  filters: filtersProp,
-  onMapStyleChange: onMapStyleChangeProp,
-  userLocation = null,
-}: GrievanceMapProps) => {
+export const GrievanceMap = ({ filters: filtersProp, userLocation = null }: GrievanceMapProps) => {
   const defaultFilters = useMapFilters();
   const filters = filtersProp ?? defaultFilters.filters;
-  const onMapStyleChange = onMapStyleChangeProp ?? defaultFilters.setMapStyle;
   const [directionsTarget, setDirectionsTarget] = useState<{
     lat: number;
     lng: number;
@@ -1119,7 +1041,7 @@ export const GrievanceMap = ({
 
           <ZoomControls />
 
-          <div className="absolute top-4 right-3 left-3 z-[1000] flex items-start gap-2 sm:left-4">
+          <div className="absolute top-4 left-3 z-[1000] w-[calc(100%-5rem)] max-w-xs sm:left-4 sm:max-w-sm">
             <SearchBox />
           </div>
 
@@ -1147,7 +1069,6 @@ export const GrievanceMap = ({
           <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-black/[0.03]" />
 
           <div className="absolute top-4 right-4 z-[1000] flex items-center gap-1.5 md:gap-2">
-            <MapStyleSwitcher mapStyle={filters.mapStyle} onChange={onMapStyleChange} />
             <div className="hidden items-center gap-1.5 rounded-xl bg-white/90 px-2 py-1.5 text-[10px] font-bold tracking-wide text-gray-700 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:flex md:gap-2 md:px-3 md:py-2 md:text-xs">
               <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />

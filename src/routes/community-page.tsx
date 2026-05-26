@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { ImpactGoals } from '@/features/community/components/impact-goals';
 import { ActivityFeed } from '@/features/community/components/activity-feed';
 
 export const CommunityPage = () => {
@@ -21,7 +20,6 @@ export const CommunityPage = () => {
       </div>
 
       <div className="mx-auto max-w-lg px-3 pt-3 pb-6">
-        <ImpactGoals />
         <ActivityFeed />
       </div>
     </div>
