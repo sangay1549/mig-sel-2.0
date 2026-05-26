@@ -9,6 +9,7 @@ import {
   Camera,
   Loader2,
   Settings,
+  Menu,
   X,
   Sparkles,
 } from 'lucide-react';
@@ -115,10 +116,10 @@ export const LeaderboardPage = () => {
 
       <button
         onClick={() => setSidebarOpen(true)}
-        className="fixed top-4 left-4 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-gray-200/50 transition-all hover:bg-gray-50 hover:shadow-xl active:scale-95"
-        title="Open settings"
+        className="fixed top-4 right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-gray-200/50 transition-all hover:bg-gray-50 hover:shadow-xl active:scale-95"
+        title="Open menu"
       >
-        <Settings className="h-5 w-5 text-gray-600" />
+        <Menu className="h-5 w-5 text-gray-600" />
       </button>
 
       {sidebarOpen && (
@@ -129,8 +130,8 @@ export const LeaderboardPage = () => {
       )}
 
       <div
-        className={`fixed top-0 left-0 z-50 flex h-full w-80 flex-col border-r border-gray-100 bg-white shadow-2xl transition-transform duration-300 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-0 right-0 z-50 flex h-full w-80 flex-col border-l border-gray-100 bg-white shadow-2xl transition-transform duration-300 ${
+          sidebarOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         <div className="flex items-center justify-between p-6 pb-4">
