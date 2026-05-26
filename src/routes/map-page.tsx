@@ -19,7 +19,7 @@ export const MapPage = () => {
 
   return (
     <div className="bg-background flex h-dvh flex-col overflow-hidden font-sans">
-      <GrievanceMap filters={filters} userLocation={userLocation} onMapStyleChange={setMapStyle} />
+      <GrievanceMap filters={filters} userLocation={userLocation} />
       <MapDock
         onOpenLayers={() => setIsLayerSheetOpen(true)}
         onLocate={locate}

@@ -55,7 +55,7 @@ export function FilterLayersSheet({
         <DialogPrimitive.Content
           className={cn(
             'fixed bottom-0 left-1/2 z-50 w-[95%] max-w-xl -translate-x-1/2',
-            'flex max-h-[70vh] flex-col rounded-t-3xl bg-slate-900 shadow-2xl',
+            'bg-card flex max-h-[70vh] flex-col rounded-t-3xl shadow-2xl',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
@@ -63,21 +63,21 @@ export function FilterLayersSheet({
           )}
         >
           <div className="flex justify-center pt-3 pb-1">
-            <div className="h-1 w-10 rounded-full bg-slate-600" />
+            <div className="bg-muted-foreground/30 h-1 w-10 rounded-full" />
           </div>
 
           <div className="flex items-center justify-between px-5 py-2">
-            <h2 className="text-base font-semibold text-white">Filters & Layers</h2>
-            <DialogPrimitive.Close className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
+            <h2 className="text-foreground text-base font-semibold">Filters & Layers</h2>
+            <DialogPrimitive.Close className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex h-7 w-7 items-center justify-center rounded-full transition-colors">
               <X className="h-4 w-4" />
             </DialogPrimitive.Close>
           </div>
 
-          <div className="mx-5 border-t border-slate-700/50" />
+          <div className="border-border mx-5 border-t" />
 
           <div className="flex-1 overflow-y-auto px-5 py-3">
             <section className="mb-5">
-              <h3 className="mb-3 text-xs font-bold tracking-wider text-slate-400 uppercase">
+              <h3 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">
                 Map Layers
               </h3>
               <div className="grid grid-cols-3 gap-2">
@@ -88,14 +88,14 @@ export function FilterLayersSheet({
                     className={cn(
                       'flex flex-col items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all',
                       filters.mapStyle === key
-                        ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
-                        : 'border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300',
+                        ? 'border-primary/50 bg-primary/10 text-primary'
+                        : 'border-border bg-accent/50 text-muted-foreground hover:border-foreground/20 hover:text-foreground/80',
                     )}
                   >
                     <Icon
                       className={cn(
                         'h-5 w-5',
-                        filters.mapStyle === key ? 'text-emerald-400' : 'text-slate-500',
+                        filters.mapStyle === key ? 'text-primary' : 'text-muted-foreground',
                       )}
                     />
                     <span className="text-center leading-tight">{label}</span>
@@ -104,10 +104,10 @@ export function FilterLayersSheet({
               </div>
             </section>
 
-            <div className="mb-5 border-t border-slate-700/50" />
+            <div className="border-border mb-5 border-t" />
 
             <section className="mb-5">
-              <h3 className="mb-3 text-xs font-bold tracking-wider text-slate-400 uppercase">
+              <h3 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">
                 Filter by Category
               </h3>
               <div className="space-y-1">
@@ -118,20 +118,22 @@ export function FilterLayersSheet({
                     className={cn(
                       'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
                       filters.categories[key]
-                        ? 'bg-slate-800 text-white'
-                        : 'text-slate-500 hover:text-slate-300',
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground hover:text-foreground/80',
                     )}
                   >
                     <div
                       className={cn(
                         'flex h-5 w-5 items-center justify-center rounded-md border transition-all',
-                        filters.categories[key] ? 'border-transparent' : 'border-slate-600',
+                        filters.categories[key] ? 'border-transparent' : 'border-input',
                       )}
                       style={{
                         backgroundColor: filters.categories[key] ? color : 'transparent',
                       }}
                     >
-                      {filters.categories[key] && <Check className="h-3 w-3 text-white" />}
+                      {filters.categories[key] && (
+                        <Check className="text-primary-foreground h-3 w-3" />
+                      )}
                     </div>
                     <span>{label}</span>
                   </button>
@@ -139,10 +141,10 @@ export function FilterLayersSheet({
               </div>
             </section>
 
-            <div className="mb-5 border-t border-slate-700/50" />
+            <div className="border-border mb-5 border-t" />
 
             <section className="mb-5">
-              <h3 className="mb-3 text-xs font-bold tracking-wider text-slate-400 uppercase">
+              <h3 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">
                 Filter by Status
               </h3>
               <div className="flex gap-2">
@@ -151,8 +153,8 @@ export function FilterLayersSheet({
                   className={cn(
                     'flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all',
                     !filters.showResolved
-                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
-                      : 'border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300',
+                      ? 'border-primary/50 bg-primary/10 text-primary'
+                      : 'border-border bg-accent/50 text-muted-foreground hover:border-foreground/20 hover:text-foreground/80',
                   )}
                 >
                   Active / Pending Only
@@ -162,8 +164,8 @@ export function FilterLayersSheet({
                   className={cn(
                     'flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all',
                     filters.showResolved
-                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
-                      : 'border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300',
+                      ? 'border-primary/50 bg-primary/10 text-primary'
+                      : 'border-border bg-accent/50 text-muted-foreground hover:border-foreground/20 hover:text-foreground/80',
                   )}
                 >
                   Include Resolved
@@ -171,10 +173,10 @@ export function FilterLayersSheet({
               </div>
             </section>
 
-            <div className="mb-5 border-t border-slate-700/50" />
+            <div className="border-border mb-5 border-t" />
 
             <section className="mb-5">
-              <h3 className="mb-3 text-xs font-bold tracking-wider text-slate-400 uppercase">
+              <h3 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">
                 Filter by Timeframe
               </h3>
               <div className="flex gap-2">
@@ -185,8 +187,8 @@ export function FilterLayersSheet({
                     className={cn(
                       'flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all',
                       filters.timeframe === key
-                        ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
-                        : 'border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300',
+                        ? 'border-primary/50 bg-primary/10 text-primary'
+                        : 'border-border bg-accent/50 text-muted-foreground hover:border-foreground/20 hover:text-foreground/80',
                     )}
                   >
                     {label}

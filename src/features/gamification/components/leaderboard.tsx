@@ -31,7 +31,7 @@ const Avatar = ({
   if (initials) {
     return (
       <div
-        className={`flex items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-sm font-bold text-gray-600 ${className}`}
+        className={`from-muted to-muted/80 text-muted-foreground flex items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold ${className}`}
       >
         {initials}
       </div>
@@ -39,8 +39,8 @@ const Avatar = ({
   }
 
   return (
-    <div className={`flex items-center justify-center rounded-full bg-gray-100 ${className}`}>
-      <User className="h-5 w-5 text-gray-400" />
+    <div className={`bg-muted flex items-center justify-center rounded-full ${className}`}>
+      <User className="text-muted-foreground h-5 w-5" />
     </div>
   );
 };
@@ -54,8 +54,8 @@ export const Leaderboard = () => {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-          <p className="text-sm font-medium text-gray-500">Loading leaderboard...</p>
+          <Loader2 className="text-primary h-8 w-8 animate-spin" />
+          <p className="text-muted-foreground text-sm font-medium">Loading leaderboard...</p>
         </div>
       </div>
     );
@@ -74,11 +74,11 @@ export const Leaderboard = () => {
   if (!entries || entries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200">
-          <TrendingUp className="h-10 w-10 text-gray-400" />
+        <div className="from-muted to-muted/50 mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br">
+          <TrendingUp className="text-muted-foreground h-10 w-10" />
         </div>
-        <p className="text-lg font-bold text-gray-900">No points earned yet</p>
-        <p className="mt-1 max-w-xs text-center text-sm text-gray-500">
+        <p className="text-foreground text-lg font-bold">No points earned yet</p>
+        <p className="text-muted-foreground mt-1 max-w-xs text-center text-sm">
           Submit complaints and get them acknowledged to earn points and climb the ranks!
         </p>
       </div>
@@ -99,10 +99,10 @@ export const Leaderboard = () => {
         <>
           <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-dashed border-gray-200" />
+              <span className="border-border w-full border-t border-dashed" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-xs font-bold tracking-wider text-gray-400 uppercase">
+              <span className="bg-background text-muted-foreground px-3 text-xs font-bold tracking-wider uppercase">
                 Your Ranking
               </span>
             </div>
@@ -132,30 +132,28 @@ const LeaderboardRow = ({
   <div
     className={`group relative flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all duration-200 ${
       isCurrentUser
-        ? 'bg-gradient-to-r from-emerald-50 to-emerald-50/50 ring-2 ring-emerald-400/40'
-        : 'bg-white ring-1 ring-gray-100 hover:ring-gray-200'
+        ? 'from-primary/5 to-primary/10 ring-primary/30 bg-gradient-to-r ring-2'
+        : 'bg-card ring-border hover:ring-foreground/10 ring-1'
     }`}
   >
     <div className="flex w-9 shrink-0 items-center justify-center">
-      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-xs font-bold text-gray-500">
+      <div className="from-muted to-muted/80 text-muted-foreground flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br text-xs font-bold">
         {entry.rank}
       </div>
     </div>
     <Avatar
       url={entry.avatar_url}
       username={entry.username}
-      className="h-9 w-9 shrink-0 shadow-sm ring-2 ring-white"
+      className="ring-background h-9 w-9 shrink-0 shadow-sm ring-2"
     />
     <div className="min-w-0 flex-1">
-      <p className="truncate text-sm font-bold text-gray-900">{entry.username ?? 'Anonymous'}</p>
-      {entry.id === currentUserId && (
-        <p className="text-[10px] font-semibold text-emerald-600">You</p>
-      )}
+      <p className="text-foreground truncate text-sm font-bold">{entry.username ?? 'Anonymous'}</p>
+      {entry.id === currentUserId && <p className="text-primary text-[10px] font-semibold">You</p>}
     </div>
     <div className="shrink-0">
-      <div className="flex items-baseline gap-1 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 px-2.5 py-1.5">
-        <span className="text-base font-black text-gray-800">{entry.points}</span>
-        <span className="text-[10px] font-semibold text-gray-400">
+      <div className="from-muted to-muted/80 flex items-baseline gap-1 rounded-lg bg-gradient-to-r px-2.5 py-1.5">
+        <span className="text-foreground text-base font-black">{entry.points}</span>
+        <span className="text-muted-foreground text-[10px] font-semibold">
           {entry.points === 1 ? 'pt' : 'pts'}
         </span>
       </div>
