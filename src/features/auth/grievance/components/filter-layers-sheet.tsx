@@ -1,0 +1,202 @@
+import { Dialog as DialogPrimitive } from 'radix-ui';
+import { X, Map, Satellite, Grid3x3, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { MapFilters, MapStyleOption, TimeframeOption } from '../hooks/use-map-filters';
+
+interface FilterLayersSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  filters: MapFilters;
+  onMapStyleChange: (style: MapStyleOption) => void;
+  onToggleCategory: (category: keyof MapFilters['categories']) => void;
+  onShowResolvedChange: (show: boolean) => void;
+  onTimeframeChange: (timeframe: TimeframeOption) => void;
+}
+
+const MAP_STYLE_OPTIONS: { key: MapStyleOption; label: string; icon: typeof Map }[] = [
+  { key: 'standard', label: 'Standard View', icon: Map },
+  { key: 'satellite', label: 'Satellite View', icon: Satellite },
+  { key: 'infrastructure', label: 'Infrastructure View', icon: Grid3x3 },
+];
+
+const CATEGORIES: { key: keyof MapFilters['categories']; label: string; color: string }[] = [
+  { key: 'road', label: 'Road Issues', color: '#d97706' },
+  { key: 'garbage', label: 'Waste Management', color: '#2563eb' },
+  { key: 'lighting', label: 'Broken Lighting', color: '#ca8a04' },
+  { key: 'drainage', label: 'Drainage', color: '#0891b2' },
+  { key: 'other', label: 'Other', color: '#154212' },
+];
+
+const TIMEFRAMES: { key: TimeframeOption; label: string }[] = [
+  { key: 'all', label: 'All Time' },
+  { key: '24h', label: 'Past 24 Hours' },
+  { key: 'week', label: 'This Week' },
+];
+
+export function FilterLayersSheet({
+  open,
+  onOpenChange,
+  filters,
+  onMapStyleChange,
+  onToggleCategory,
+  onShowResolvedChange,
+  onTimeframeChange,
+}: FilterLayersSheetProps) {
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className={cn(
+            'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+          )}
+        />
+        <DialogPrimitive.Content
+          className={cn(
+            'fixed bottom-0 left-1/2 z-50 w-[95%] max-w-xl -translate-x-1/2',
+            'flex max-h-[70vh] flex-col rounded-t-3xl bg-slate-900 shadow-2xl',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'duration-300',
+          )}
+        >
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="h-1 w-10 rounded-full bg-slate-600" />
+          </div>
+
+          <div className="flex items-center justify-between px-5 py-2">
+            <h2 className="text-base font-semibold text-white">Filters & Layers</h2>
+            <DialogPrimitive.Close className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
+              <X className="h-4 w-4" />
+            </DialogPrimitive.Close>
+          </div>
+
+          <div className="mx-5 border-t border-slate-700/50" />
+
+          <div className="flex-1 overflow-y-auto px-5 py-3">
+            <section className="mb-5">
+              <h3 className="mb-3 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                Map Layers
+              </h3>
+              <div className="grid grid-cols-3 gap-2">
+                {MAP_STYLE_OPTIONS.map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => onMapStyleChange(key)}
+                    className={cn(
+                      'flex flex-col items-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all',
+                      filters.mapStyle === key
+                        ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
+                        : 'border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300',
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'h-5 w-5',
+                        filters.mapStyle === key ? 'text-emerald-400' : 'text-slate-500',
+                      )}
+                    />
+                    <span className="text-center leading-tight">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <div className="mb-5 border-t border-slate-700/50" />
+
+            <section className="mb-5">
+              <h3 className="mb-3 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                Filter by Category
+              </h3>
+              <div className="space-y-1">
+                {CATEGORIES.map(({ key, label, color }) => (
+                  <button
+                    key={key}
+                    onClick={() => onToggleCategory(key)}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
+                      filters.categories[key]
+                        ? 'bg-slate-800 text-white'
+                        : 'text-slate-500 hover:text-slate-300',
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex h-5 w-5 items-center justify-center rounded-md border transition-all',
+                        filters.categories[key] ? 'border-transparent' : 'border-slate-600',
+                      )}
+                      style={{
+                        backgroundColor: filters.categories[key] ? color : 'transparent',
+                      }}
+                    >
+                      {filters.categories[key] && <Check className="h-3 w-3 text-white" />}
+                    </div>
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <div className="mb-5 border-t border-slate-700/50" />
+
+            <section className="mb-5">
+              <h3 className="mb-3 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                Filter by Status
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onShowResolvedChange(false)}
+                  className={cn(
+                    'flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all',
+                    !filters.showResolved
+                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
+                      : 'border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300',
+                  )}
+                >
+                  Active / Pending Only
+                </button>
+                <button
+                  onClick={() => onShowResolvedChange(true)}
+                  className={cn(
+                    'flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all',
+                    filters.showResolved
+                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
+                      : 'border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300',
+                  )}
+                >
+                  Include Resolved
+                </button>
+              </div>
+            </section>
+
+            <div className="mb-5 border-t border-slate-700/50" />
+
+            <section className="mb-5">
+              <h3 className="mb-3 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                Filter by Timeframe
+              </h3>
+              <div className="flex gap-2">
+                {TIMEFRAMES.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => onTimeframeChange(key)}
+                    className={cn(
+                      'flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-all',
+                      filters.timeframe === key
+                        ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
+                        : 'border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
