@@ -436,9 +436,8 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
     requestLocation();
   }, [map, detectedCoords, requestLocation]);
 
-  const handleConfirmEnableLocation = useCallback(() => {
+  const handleDismissPermissionDialog = useCallback(() => {
     setShowPermissionDialog(false);
-    setError('Location permission denied. Enable location access in your browser settings.');
   }, []);
 
   return (
@@ -483,17 +482,15 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
       <DialogRoot open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Turn on location?</DialogTitle>
+            <DialogTitle>Turn on location</DialogTitle>
             <DialogDescription>
-              Your location is currently turned off. Enable it to see your position on the map.
+              Your location is currently turned off. Enable GPS/location on your device, then allow
+              location access when prompted by your browser.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPermissionDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="default" onClick={handleConfirmEnableLocation}>
-              Yes
+            <Button variant="default" onClick={handleDismissPermissionDialog}>
+              OK
             </Button>
           </DialogFooter>
         </DialogContent>
