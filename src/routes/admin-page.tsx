@@ -41,7 +41,13 @@ export const AdminPage = () => {
     charts: { title: 'Analytics', description: 'Oversight panel for GMC waste management' },
   };
 
-  const { title: pageTitle, description: pageDescription } = pageMeta[activeView];
+  const { title: pageTitle } = pageMeta[activeView];
+  const pageDescription =
+    activeView === 'charts'
+      ? analyticsTab === 'complaint'
+        ? 'Oversight panel for GMC complaint monitor'
+        : 'Oversight panel for GMC waste management'
+      : pageMeta[activeView].description;
   const IconComponent = iconMap[activeView];
 
   return (
@@ -94,7 +100,7 @@ export const AdminPage = () => {
                   </div>
                   <div>
                     <div className="text-muted-foreground/40 mb-1 text-xs font-semibold tracking-widest uppercase">
-                      {activeView === 'charts' ? 'Analytics' : 'Data'}
+                      {activeView === 'charts' ? 'Overview' : 'Data'}
                     </div>
                     <h1 className="text-foreground text-2xl font-bold tracking-tight">
                       {pageTitle}
