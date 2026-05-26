@@ -24,7 +24,7 @@ export const useCreateGrievance = () => {
 
       if (error) throw error;
 
-      await awardPointsForSubmission(input.reporter_id);
+      await awardPointsForSubmission(input.reporter_id, data.id);
 
       return data;
     },

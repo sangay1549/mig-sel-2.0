@@ -35,6 +35,7 @@ export async function awardPointsForStatus(
 
 export async function awardPointsForSubmission(
   reporterId: string | null | undefined,
+  grievanceId?: string,
 ): Promise<void> {
   if (!reporterId) return;
 
@@ -51,6 +52,16 @@ export async function awardPointsForSubmission(
     .upsert({ id: reporterId, points: currentPoints + 1 });
 
   if (error) throw error;
+
+  // Track bonus_awarded so merge revocation works correctly
+  if (grievanceId) {
+    const { error: bonusError } = await supabase
+      .from('grievances')
+      .update({ bonus_awarded: 1 })
+      .eq('id', grievanceId);
+
+    if (bonusError) throw bonusError;
+  }
 }
 
 export async function revokeChildPoints(
