@@ -9,16 +9,14 @@ export const LoginPage = () => {
   const signInWithGoogle = useSignInWithGoogle();
 
   return (
-    <div className="relative flex min-h-svh items-center justify-center p-6">
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 h-full w-full object-cover"
-      >
-        <source src="/login-bg.mp4" type="video/mp4" />
-      </video>
+    <div
+      className="relative flex min-h-svh items-center justify-center p-6"
+      style={{
+        backgroundImage: 'url(/GMC.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <div className="absolute inset-0 bg-blue-950/40" />
 
       <div className="relative w-full max-w-sm">
