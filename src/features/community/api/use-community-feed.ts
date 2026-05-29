@@ -14,31 +14,36 @@ const MOCK_GOAL: ImpactGoal = {
 
 export const communityKeys = {
   all: ['community'] as const,
-  feed: (userId?: string) => [...communityKeys.all, 'feed', userId] as const,
+  feed: (userId?: string, page?: number, pageSize?: number) =>
+    [...communityKeys.all, 'feed', userId, page, pageSize] as const,
   goal: () => [...communityKeys.all, 'goal'] as const,
 };
 
-export const useCommunityFeed = () => {
+export const useCommunityFeed = (page: number = 1, pageSize: number = 5) => {
   const { user } = useCurrentUser();
 
   return useQuery({
-    queryKey: communityKeys.feed(user?.id),
+    queryKey: communityKeys.feed(user?.id, page, pageSize),
     staleTime: 30_000,
     retry: 1,
-    queryFn: async (): Promise<ActivityItem[]> => {
-      const { data, error } = await supabase
+    queryFn: async (): Promise<{ items: ActivityItem[]; count: number }> => {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error, count } = await supabase
         .from('community_feed')
         .select(
-          'id, user_name, user_initials, action_text, location, image_url, created_at, upvote_count, comment_count, user_id, status, grievance_id, grievance:grievances!inner(approved, status)',
+          'id, user_name, user_initials, action_text, location, image_url, created_at, upvote_count, comment_count, user_id, status, grievance:grievances!inner(approved, status, latitude, longitude)',
+          { count: 'exact', head: false },
         )
         .eq('grievance.approved', true)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .range(from, to);
 
       if (error) {
         if (error.code === '42P01') {
           console.warn('community_feed table not yet created in DB');
-          return [];
+          return { items: [], count: 0 };
         }
         throw error;
       }
@@ -73,26 +78,29 @@ export const useCommunityFeed = () => {
         }
       }
 
-      return (data || [])
-        .filter((row) => (row.grievance as { approved?: boolean } | null)?.approved === true)
-        .map<ActivityItem>((row) => ({
-          id: row.id,
-          userName: row.user_name,
-          userInitials: row.user_initials,
-          action: row.action_text,
-          location: row.location ?? '',
-          timestamp: new Date(row.created_at),
-          upvoteCount: row.upvote_count ?? 0,
-          commentCount: row.comment_count ?? 0,
-          isUpvoted: upvotedIds.has(row.id),
-          image_url: row.image_url ?? undefined,
-          userId: row.user_id ?? undefined,
-          avatarUrl: row.user_id ? avatarMap.get(row.user_id) : undefined,
-          status:
-            (row.grievance as { status?: FeedStatus } | null)?.status ??
-            (row.status as FeedStatus | null) ??
-            undefined,
-        }));
+      const items = (data || []).map<ActivityItem>((row) => ({
+        id: row.id,
+        userName: row.user_name,
+        userInitials: row.user_initials,
+        action: row.action_text,
+        location: row.location ?? '',
+        timestamp: new Date(row.created_at),
+        upvoteCount: row.upvote_count ?? 0,
+        commentCount: row.comment_count ?? 0,
+        isUpvoted: upvotedIds.has(row.id),
+        image_url: row.image_url ?? undefined,
+        userId: row.user_id ?? undefined,
+        avatarUrl: row.user_id ? avatarMap.get(row.user_id) : undefined,
+        status:
+          (row.grievance as { status?: FeedStatus; latitude?: number; longitude?: number } | null)
+            ?.status ??
+          (row.status as FeedStatus | null) ??
+          undefined,
+        latitude: (row.grievance as { latitude?: number } | null)?.latitude ?? undefined,
+        longitude: (row.grievance as { longitude?: number } | null)?.longitude ?? undefined,
+      }));
+
+      return { items, count: count ?? items.length };
     },
   });
 };
