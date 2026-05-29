@@ -29,8 +29,9 @@ export const useCommunityFeed = () => {
       const { data, error } = await supabase
         .from('community_feed')
         .select(
-          'id, user_name, user_initials, action_text, location, image_url, created_at, upvote_count, comment_count, user_id, status, grievance:grievances!grievance_id(status, latitude, longitude)',
+          'id, user_name, user_initials, action_text, location, image_url, created_at, upvote_count, comment_count, user_id, status, grievance_id, grievance:grievances!inner(approved, status)',
         )
+        .eq('grievance.approved', true)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -72,27 +73,26 @@ export const useCommunityFeed = () => {
         }
       }
 
-      return (data || []).map<ActivityItem>((row) => ({
-        id: row.id,
-        userName: row.user_name,
-        userInitials: row.user_initials,
-        action: row.action_text,
-        location: row.location ?? '',
-        timestamp: new Date(row.created_at),
-        upvoteCount: row.upvote_count ?? 0,
-        commentCount: row.comment_count ?? 0,
-        isUpvoted: upvotedIds.has(row.id),
-        image_url: row.image_url ?? undefined,
-        userId: row.user_id ?? undefined,
-        avatarUrl: row.user_id ? avatarMap.get(row.user_id) : undefined,
-        status:
-          (row.grievance as { status?: FeedStatus; latitude?: number; longitude?: number } | null)
-            ?.status ??
-          (row.status as FeedStatus | null) ??
-          undefined,
-        latitude: (row.grievance as { latitude?: number } | null)?.latitude ?? undefined,
-        longitude: (row.grievance as { longitude?: number } | null)?.longitude ?? undefined,
-      }));
+      return (data || [])
+        .filter((row) => (row.grievance as { approved?: boolean } | null)?.approved === true)
+        .map<ActivityItem>((row) => ({
+          id: row.id,
+          userName: row.user_name,
+          userInitials: row.user_initials,
+          action: row.action_text,
+          location: row.location ?? '',
+          timestamp: new Date(row.created_at),
+          upvoteCount: row.upvote_count ?? 0,
+          commentCount: row.comment_count ?? 0,
+          isUpvoted: upvotedIds.has(row.id),
+          image_url: row.image_url ?? undefined,
+          userId: row.user_id ?? undefined,
+          avatarUrl: row.user_id ? avatarMap.get(row.user_id) : undefined,
+          status:
+            (row.grievance as { status?: FeedStatus } | null)?.status ??
+            (row.status as FeedStatus | null) ??
+            undefined,
+        }));
     },
   });
 };

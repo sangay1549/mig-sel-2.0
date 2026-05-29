@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from 'react';
 import {
   ChevronDown,
   Clock,
@@ -11,6 +11,8 @@ import {
   FileDown,
   Link2,
   X,
+  UserCheck,
+  Trash2,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
@@ -31,13 +33,15 @@ import {
   URGENCY_LABELS,
 } from '@/features/complaint/constants';
 import type { Complaint, ComplaintUrgency, ComplaintStatus } from '@/features/complaint/types';
+import { useApproveComplaint } from '@/features/complaint/api/use-approve-complaint';
+import { useDisapproveComplaint } from '@/features/complaint/api/use-disapprove-complaint';
 import {
   awardPointsForStatus,
   revokeChildPoints,
   restoreMasterPoints,
 } from '@/features/complaint/utils/award-points';
 
-type ActiveTab = 'total' | ComplaintStatus;
+type ActiveTab = 'total' | 'unapproved' | ComplaintStatus;
 
 export const ComplaintMonitor = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,9 +54,15 @@ export const ComplaintMonitor = () => {
   const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
   const [unlinkTargetId, setUnlinkTargetId] = useState<string | null>(null);
   const [previewComplaint, setPreviewComplaint] = useState<Complaint | null>(null);
+  const [disapproveConfirmId, setDisapproveConfirmId] = useState<string | null>(null);
+  const [bulkDisapprove, setBulkDisapprove] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   const queryClient = useQueryClient();
   const { data: complaints = [], isLoading, error: queryError } = useComplaints();
+  const approveComplaint = useApproveComplaint();
+  const disapproveComplaint = useDisapproveComplaint();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -204,6 +214,42 @@ export const ComplaintMonitor = () => {
     queryClient.invalidateQueries({ queryKey: complaintKeys.all });
   };
 
+  useEffect(() => {
+    startTransition(() => {
+      setSelectedIds(new Set());
+    });
+  }, [activeTab]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginated.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginated.map((c) => c.id)));
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    const ids = Array.from(selectedIds);
+    setSelectedIds(new Set());
+    await Promise.all(ids.map((id) => approveComplaint.mutateAsync(id)));
+  };
+
+  const handleBulkReject = async () => {
+    const ids = Array.from(selectedIds);
+    setSelectedIds(new Set());
+    setBulkDisapprove(false);
+    await Promise.all(ids.map((id) => disapproveComplaint.mutateAsync(id)));
+  };
+
   const handleUrgencyChange = async (id: string, newUrgency: ComplaintUrgency) => {
     const current = complaints.find((c) => c.id === id);
     if (!current || current.urgency === newUrgency) return;
@@ -235,7 +281,7 @@ export const ComplaintMonitor = () => {
     .filter((c): c is NonNullable<typeof c> => c != null)
     .filter((c) => {
       if (activeTab === 'total') return true;
-
+      if (activeTab === 'unapproved') return !c.approved;
       return c.status === activeTab;
     })
     .filter((c) => urgencyFilter === 'all' || c.urgency === urgencyFilter)
@@ -256,14 +302,23 @@ export const ComplaintMonitor = () => {
 
   const masterOptions = complaints.filter((c) => c.parent_id === null);
 
+  const colCount = activeTab === 'unapproved' ? 5 : 7;
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        selectedIds.size > 0 && selectedIds.size < paginated.length;
+    }
+  }, [selectedIds, paginated.length]);
 
   const summary = {
     total: complaints.length,
     pending: complaints.filter((c) => c.status === 'pending').length,
     inProgress: complaints.filter((c) => c.status === 'in-progress').length,
     resolved: complaints.filter((c) => c.status === 'resolved').length,
+    unapproved: complaints.filter((c) => !c.approved).length,
   };
 
   const handleTabClick = (tab: ActiveTab) => {
@@ -485,6 +540,16 @@ export const ComplaintMonitor = () => {
           '#16a34a',
           '#16a34a',
         )}
+        {tabCard(
+          'unapproved',
+          'Unapproved',
+          summary.unapproved,
+          '#fef2f2',
+          '#fca5a5',
+          <UserCheck className="h-4 w-4 text-red-500" />,
+          '#dc2626',
+          '#dc2626',
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -552,33 +617,54 @@ export const ComplaintMonitor = () => {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100">
+                {activeTab === 'unapproved' && (
+                  <th className="w-12 bg-slate-50/75 px-4 py-3.5">
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      checked={paginated.length > 0 && selectedIds.size === paginated.length}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 cursor-pointer rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                    />
+                  </th>
+                )}
                 <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
                   Complaint
                 </th>
                 <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
                   Category
                 </th>
-                <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  Urgency
-                </th>
-                <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  Status
-                </th>
-                <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  Points
-                </th>
+                {activeTab !== 'unapproved' && (
+                  <>
+                    <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                      Urgency
+                    </th>
+                    <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                      Status
+                    </th>
+                    <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                      Points
+                    </th>
+                  </>
+                )}
                 <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
                   Image
                 </th>
-                <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                  Link
-                </th>
+                {activeTab === 'unapproved' ? (
+                  <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                    Actions
+                  </th>
+                ) : (
+                  <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
+                    Link
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
+                  <td colSpan={colCount} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-slate-400">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       <span className="text-xs">Loading grievances...</span>
@@ -587,7 +673,7 @@ export const ComplaintMonitor = () => {
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center text-sm text-slate-300">
+                  <td colSpan={colCount} className="px-4 py-16 text-center text-sm text-slate-300">
                     No complaints match the selected filters
                   </td>
                 </tr>
@@ -597,6 +683,16 @@ export const ComplaintMonitor = () => {
                     key={complaint.id}
                     className="group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50"
                   >
+                    {activeTab === 'unapproved' && (
+                      <td className="w-12 px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(complaint.id)}
+                          onChange={() => toggleSelect(complaint.id)}
+                          className="h-4 w-4 cursor-pointer rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                        />
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <div
                         className="max-w-[220px] cursor-pointer"
@@ -623,96 +719,108 @@ export const ComplaintMonitor = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={complaint.urgency}
-                        onChange={(e) =>
-                          handleUrgencyChange(complaint.id, e.target.value as ComplaintUrgency)
-                        }
-                        className="cursor-pointer rounded-lg border bg-white px-2 py-1 text-xs font-bold tracking-wide uppercase transition-all outline-none"
-                        style={{
-                          borderColor: URGENCY_BADGE[complaint.urgency]?.text || '#c2c9bb',
-                          backgroundColor: URGENCY_BADGE[complaint.urgency]?.bg || '#f3f4f6',
-                          color: URGENCY_BADGE[complaint.urgency]?.text || '#1f2937',
-                        }}
-                      >
-                        {Object.entries(URGENCY_LABELS).map(([key, label]) => (
-                          <option key={key} value={key} className="bg-white text-slate-800">
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={complaint.status}
-                        onChange={(e) =>
-                          handleStatusChange(complaint.id, e.target.value as ComplaintStatus)
-                        }
-                        className={`cursor-pointer rounded-lg border px-2 py-1 text-xs font-bold tracking-wide uppercase transition-all outline-none ${
-                          complaint.status === 'resolved'
-                            ? 'border-emerald-600 bg-emerald-500 text-white'
-                            : complaint.status === 'in-progress'
-                              ? 'border-blue-600 bg-blue-500 text-white'
-                              : 'border-orange-500 bg-orange-400 text-white'
-                        }`}
-                      >
-                        {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                          <option key={key} value={key} className="bg-white text-slate-800">
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                        <span className="text-sm font-bold text-slate-700">
-                          {(() => {
-                            const statusPoints: Record<string, number> = {
-                              pending: 1,
-                              'in-progress': 2,
-                              resolved: 4,
-                            };
-                            return statusPoints[complaint.status] ?? 1;
-                          })()}
-                        </span>
-                        <span className="text-[10px] text-slate-400">/ 4 pts</span>
-                      </div>
-                    </td>
+                    {activeTab !== 'unapproved' && (
+                      <>
+                        <td className="px-4 py-3">
+                          <select
+                            value={complaint.urgency}
+                            onChange={(e) =>
+                              handleUrgencyChange(complaint.id, e.target.value as ComplaintUrgency)
+                            }
+                            className="cursor-pointer rounded-lg border bg-white px-2 py-1 text-xs font-bold tracking-wide uppercase transition-all outline-none"
+                            style={{
+                              borderColor: URGENCY_BADGE[complaint.urgency]?.text || '#c2c9bb',
+                              backgroundColor: URGENCY_BADGE[complaint.urgency]?.bg || '#f3f4f6',
+                              color: URGENCY_BADGE[complaint.urgency]?.text || '#1f2937',
+                            }}
+                          >
+                            {Object.entries(URGENCY_LABELS).map(([key, label]) => (
+                              <option key={key} value={key} className="bg-white text-slate-800">
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={complaint.status}
+                            onChange={(e) =>
+                              handleStatusChange(complaint.id, e.target.value as ComplaintStatus)
+                            }
+                            className={`cursor-pointer rounded-lg border px-2 py-1 text-xs font-bold tracking-wide uppercase transition-all outline-none ${
+                              complaint.status === 'resolved'
+                                ? 'border-emerald-600 bg-emerald-500 text-white'
+                                : complaint.status === 'in-progress'
+                                  ? 'border-blue-600 bg-blue-500 text-white'
+                                  : 'border-orange-500 bg-orange-400 text-white'
+                            }`}
+                          >
+                            {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                              <option key={key} value={key} className="bg-white text-slate-800">
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                            <span className="text-sm font-bold text-slate-700">
+                              {(() => {
+                                const statusPoints: Record<string, number> = {
+                                  pending: 1,
+                                  'in-progress': 2,
+                                  resolved: 4,
+                                };
+                                return statusPoints[complaint.status] ?? 1;
+                              })()}
+                            </span>
+                            <span className="text-[10px] text-slate-400">/ 4 pts</span>
+                          </div>
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-3">
                       {complaint.image_url ? (
-                        <div className="relative">
-                          <img
+                        activeTab === 'unapproved' ? (
+                          <ImageLightbox
                             src={complaint.image_url}
                             alt={complaint.title}
-                            onClick={() => setPreviewComplaint(complaint)}
-                            className="h-14 w-28 cursor-pointer rounded-lg border border-slate-200/60 object-cover shadow-xs transition-all hover:scale-105 hover:ring-2 hover:ring-slate-300"
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              target.style.display = 'none';
-                              target.nextElementSibling?.classList.remove('hidden');
-                            }}
+                            className="h-14 w-28 rounded-lg border border-slate-200/60 object-cover shadow-xs transition-all hover:scale-105 hover:ring-2 hover:ring-slate-300"
                           />
-                          <div className="absolute inset-0 flex hidden items-center justify-center rounded-lg border border-slate-200/60 bg-slate-50">
-                            <div className="flex flex-col items-center gap-1 text-slate-300">
-                              <svg
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={1.5}
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 0 0 1.5-1.5V5.25a1.5 1.5 0 0 0-1.5-1.5H3.75a1.5 1.5 0 0 0-1.5 1.5v14.25c0 .828.672 1.5 1.5 1.5Z"
-                                />
-                              </svg>
-                              <span className="text-[10px]">No image</span>
+                        ) : (
+                          <div className="relative">
+                            <img
+                              src={complaint.image_url}
+                              alt={complaint.title}
+                              onClick={() => setPreviewComplaint(complaint)}
+                              className="h-14 w-28 cursor-pointer rounded-lg border border-slate-200/60 object-cover shadow-xs transition-all hover:scale-105 hover:ring-2 hover:ring-slate-300"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.style.display = 'none';
+                                target.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                            <div className="absolute inset-0 flex hidden items-center justify-center rounded-lg border border-slate-200/60 bg-slate-50">
+                              <div className="flex flex-col items-center gap-1 text-slate-300">
+                                <svg
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={1.5}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 0 0 1.5-1.5V5.25a1.5 1.5 0 0 0-1.5-1.5H3.75a1.5 1.5 0 0 0-1.5 1.5v14.25c0 .828.672 1.5 1.5 1.5Z"
+                                  />
+                                </svg>
+                                <span className="text-[10px]">No image</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )
                       ) : (
                         <div className="flex h-14 w-28 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50">
                           <svg
@@ -731,54 +839,89 @@ export const ComplaintMonitor = () => {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      {(() => {
-                        const children = childrenMap.get(complaint.id);
-                        if (children && children.length > 0) {
-                          return (
-                            <span
-                              className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
-                              title={children.map((c) => c.title).join(', ')}
-                            >
-                              <Link2 className="h-3 w-3" />
-                              {children.length}
-                            </span>
-                          );
-                        }
-                        if (complaint.parent_id) {
-                          return (
-                            <span className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-medium text-slate-400">Linked</span>
-                              <button
-                                type="button"
-                                onClick={() => setUnlinkTargetId(complaint.id)}
-                                className="rounded p-0.5 text-red-400 transition-all hover:bg-red-50 hover:text-red-600"
-                                title="Unlink from parent"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </span>
-                          );
-                        }
-                        return (
+                    {activeTab === 'unapproved' ? (
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setMergeTargetId(complaint.id)}
-                            className={`rounded-lg p-1.5 text-slate-400 transition-all hover:scale-110 hover:bg-slate-100 hover:text-slate-600 ${
-                              complaint.status === 'resolved' ? 'cursor-not-allowed opacity-30' : ''
-                            }`}
-                            title={
-                              complaint.status === 'resolved'
-                                ? 'Resolved complaints cannot be linked'
-                                : 'Link as duplicate of a master complaint'
+                            onClick={() => approveComplaint.mutate(complaint.id)}
+                            disabled={
+                              approveComplaint.isPending &&
+                              approveComplaint.variables === complaint.id
                             }
-                            disabled={complaint.status === 'resolved'}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 transition-all hover:bg-amber-100 disabled:opacity-50"
                           >
-                            <Link2 className="h-3.5 w-3.5" />
+                            <UserCheck className="h-3 w-3" />
+                            {approveComplaint.isPending &&
+                            approveComplaint.variables === complaint.id
+                              ? '...'
+                              : 'Approve'}
                           </button>
-                        );
-                      })()}
-                    </td>
+                          <button
+                            type="button"
+                            onClick={() => setDisapproveConfirmId(complaint.id)}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-all hover:bg-red-100"
+                            title="Permanently delete this report"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    ) : (
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const children = childrenMap.get(complaint.id);
+                          if (children && children.length > 0) {
+                            return (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
+                                title={children.map((c) => c.title).join(', ')}
+                              >
+                                <Link2 className="h-3 w-3" />
+                                {children.length}
+                              </span>
+                            );
+                          }
+                          if (complaint.parent_id) {
+                            return (
+                              <span className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-medium text-slate-400">
+                                  Linked
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setUnlinkTargetId(complaint.id)}
+                                  className="rounded p-0.5 text-red-400 transition-all hover:bg-red-50 hover:text-red-600"
+                                  title="Unlink from parent"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            );
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setMergeTargetId(complaint.id)}
+                              className={`rounded-lg p-1.5 text-slate-400 transition-all hover:scale-110 hover:bg-slate-100 hover:text-slate-600 ${
+                                complaint.status === 'resolved'
+                                  ? 'cursor-not-allowed opacity-30'
+                                  : ''
+                              }`}
+                              title={
+                                complaint.status === 'resolved'
+                                  ? 'Resolved complaints cannot be linked'
+                                  : 'Link as duplicate of a master complaint'
+                              }
+                              disabled={complaint.status === 'resolved'}
+                            >
+                              <Link2 className="h-3.5 w-3.5" />
+                            </button>
+                          );
+                        })()}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -786,6 +929,32 @@ export const ComplaintMonitor = () => {
           </table>
         </div>
 
+        {activeTab === 'unapproved' && selectedIds.size > 0 && (
+          <div className="flex items-center justify-between border-t border-slate-100 bg-amber-50/50 px-4 py-2.5">
+            <span className="text-xs font-semibold text-amber-800">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleBulkApprove}
+                disabled={approveComplaint.isPending}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700 transition-all hover:bg-amber-200 disabled:opacity-50"
+              >
+                <UserCheck className="h-3 w-3" />
+                {approveComplaint.isPending ? 'Approving...' : 'Approve All'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkDisapprove(true)}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700 transition-all hover:bg-red-200"
+              >
+                <Trash2 className="h-3 w-3" />
+                Reject All
+              </button>
+            </div>
+          </div>
+        )}
         <div className="px-4 py-3">
           <Pagination
             currentPage={currentPage}
@@ -1114,7 +1283,7 @@ export const ComplaintMonitor = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <div>
                       <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
                         Resolved At
@@ -1133,6 +1302,22 @@ export const ComplaintMonitor = () => {
                         Bonus
                       </p>
                       <p style={{ color: '#42493e' }}>{previewComplaint.bonus_awarded}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold tracking-wide text-gray-400 uppercase">
+                        Approved
+                      </p>
+                      {previewComplaint.approved ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-red-600">
+                          <X className="h-3 w-3" />
+                          No
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <Trophy className="h-3 w-3 text-amber-500" />
@@ -1227,6 +1412,85 @@ export const ComplaintMonitor = () => {
             </div>
           );
         })()}
+      {bulkDisapprove && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setBulkDisapprove(false)}
+        >
+          <div
+            className="mx-4 w-full max-w-sm rounded-xl border bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 text-sm font-bold" style={{ color: '#1c1b1b' }}>
+              Reject {selectedIds.size} Complaints?
+            </h3>
+            <p className="mb-1 text-xs" style={{ color: '#72796e' }}>
+              This will permanently delete all {selectedIds.size} selected grievances. Any points
+              awarded will be revoked. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setBulkDisapprove(false)}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{ color: '#72796e' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkReject}
+                disabled={disapproveComplaint.isPending}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {disapproveComplaint.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                {disapproveComplaint.isPending ? 'Removing...' : `Yes, Delete All`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {disapproveConfirmId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setDisapproveConfirmId(null)}
+        >
+          <div
+            className="mx-4 w-full max-w-sm rounded-xl border bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 text-sm font-bold" style={{ color: '#1c1b1b' }}>
+              Disapprove Complaint?
+            </h3>
+            <p className="mb-1 text-xs" style={{ color: '#72796e' }}>
+              This will permanently delete the grievance. Any points awarded will be revoked. This
+              action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDisapproveConfirmId(null)}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{ color: '#72796e' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  disapproveComplaint.mutate(disapproveConfirmId);
+                  setDisapproveConfirmId(null);
+                }}
+                disabled={disapproveComplaint.isPending}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {disapproveComplaint.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                {disapproveComplaint.isPending ? 'Removing...' : 'Yes, Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

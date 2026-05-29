@@ -9,18 +9,16 @@ import {
   Search,
   Loader2,
   Navigation,
+  Plus,
+  Minus,
   Maximize2,
   Minimize2,
   ArrowRight,
   Link2,
   MapPin,
   Layers,
-  Map as MapIcon,
-  Satellite,
-  Grid3x3,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useMapFilters, type MapFilters, type MapStyleOption } from '../hooks/use-map-filters';
+import { useMapFilters, type MapFilters } from '../hooks/use-map-filters';
 import { DirectionsControl } from './directions-control';
 import { ImageLightbox } from './image-lightbox';
 import {
@@ -32,7 +30,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useSearchParams } from 'react-router';
 
 const SARPANG_BOUNDS = L.latLngBounds([26.7032, 89.9213], [27.2401, 90.7235]);
 const DEFAULT_CENTER = { lat: 26.9312, lng: 90.4795 };
@@ -289,6 +286,31 @@ function categoryLabel(category: string): string {
   return CATEGORY_LABELS[category] ?? category;
 }
 
+function ZoomControls() {
+  const map = useMap();
+
+  return (
+    <div className="absolute right-4 bottom-28 z-[1000] flex flex-col gap-px">
+      <button
+        onClick={() => map.zoomIn()}
+        title="Zoom in"
+        aria-label="Zoom in"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-t-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
+      >
+        <Plus className="h-4 w-4 text-gray-700 md:h-5 md:w-5" />
+      </button>
+      <button
+        onClick={() => map.zoomOut()}
+        title="Zoom out"
+        aria-label="Zoom out"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-b-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-10 md:w-10"
+      >
+        <Minus className="h-4 w-4 text-gray-700 md:h-5 md:w-5" />
+      </button>
+    </div>
+  );
+}
+
 function SearchBox() {
   const map = useMap();
   return <MapSearch map={map} />;
@@ -320,25 +342,6 @@ function UserLocationDot({
       layers.push(accCircle);
     }
 
-    const dot = L.circleMarker([detectedCoords.lat, detectedCoords.lng], {
-      radius: 10,
-      color: '#2563eb',
-      fillColor: '#3b82f6',
-      fillOpacity: 0.4,
-      weight: 3,
-      opacity: 0.9,
-    }).addTo(map);
-    layers.push(dot);
-
-    const pulse = L.circleMarker([detectedCoords.lat, detectedCoords.lng], {
-      radius: 6,
-      color: '#3b82f6',
-      fillColor: '#60a5fa',
-      fillOpacity: 0.8,
-      weight: 2,
-    }).addTo(map);
-    layers.push(pulse);
-
     return () => {
       layers.forEach((l) => map.removeLayer(l));
     };
@@ -348,13 +351,6 @@ function UserLocationDot({
 }
 
 function UserMarker({ userLocation }: { userLocation: { lat: number; lng: number } | null }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!userLocation) return;
-    map.flyTo([userLocation.lat, userLocation.lng], 15, { animate: true, duration: 1.5 });
-  }, [userLocation, map]);
-
   const icon = useMemo(
     () =>
       L.divIcon({
@@ -439,7 +435,7 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
   }, []);
 
   return (
-    <div className="absolute right-4 bottom-32 z-[1000]">
+    <div className="absolute right-4 bottom-52 z-[1000]">
       {error && (
         <div
           onClick={() => setError(null)}
@@ -448,34 +444,37 @@ function LocateButton({ coords: detectedCoords }: { coords: { lat: number; lng: 
           {error}
         </div>
       )}
-      <button
-        onClick={handleLocate}
-        disabled={locating}
-        title="My Location"
-        aria-label="My Location"
-        className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-wait disabled:opacity-50"
-      >
-        {locating ? (
-          <Loader2 className="h-6 w-6 animate-spin text-gray-700" />
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-6 w-6 text-gray-700"
-          >
-            <line x1="12" x2="12" y1="2" y2="6" />
-            <line x1="12" x2="12" y1="18" y2="22" />
-            <line x1="2" x2="6" y1="12" y2="12" />
-            <line x1="18" x2="22" y1="12" y2="12" />
-            <circle cx="12" cy="12" r="4" />
-          </svg>
-        )}
-      </button>
+      <div className="flex flex-col items-center gap-0.5">
+        <button
+          onClick={handleLocate}
+          disabled={locating}
+          title="My Location"
+          aria-label="My Location"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 disabled:cursor-wait disabled:opacity-50 md:h-9 md:w-9"
+        >
+          {locating ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-700 md:h-4 md:w-4" />
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3.5 w-3.5 text-gray-700 md:h-4 md:w-4"
+            >
+              <line x1="12" x2="12" y1="2" y2="6" />
+              <line x1="12" x2="12" y1="18" y2="22" />
+              <line x1="2" x2="6" y1="12" y2="12" />
+              <line x1="18" x2="22" y1="12" y2="12" />
+              <circle cx="12" cy="12" r="4" />
+            </svg>
+          )}
+        </button>
+        <span className="text-[10px] font-semibold text-gray-500">Me</span>
+      </div>
 
       <DialogRoot open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
         <DialogContent className="max-w-sm">
@@ -573,7 +572,7 @@ function MapSearch({ map }: { map: L.Map }) {
   };
 
   return (
-    <div ref={containerRef} className="relative min-w-0 flex-1">
+    <div ref={containerRef} className="min-w-0 flex-1">
       <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 shadow-lg ring-1 ring-gray-200/60 backdrop-blur-md">
         <Search className="h-4 w-4 shrink-0 text-gray-400" />
         <input
@@ -591,7 +590,7 @@ function MapSearch({ map }: { map: L.Map }) {
         {isSearching && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
       </div>
       {isOpen && results.length > 0 && (
-        <div className="absolute right-0 left-0 z-[1001] mt-1 max-h-60 overflow-y-auto rounded-xl bg-white shadow-lg ring-1 ring-gray-200/60">
+        <div className="mt-1 max-h-60 overflow-y-auto rounded-xl bg-white shadow-lg ring-1 ring-gray-200/60">
           {results.map((result, i) => (
             <button
               key={i}
@@ -647,25 +646,12 @@ function FullscreenButton({
 
 function MapInit() {
   const map = useMap();
-  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     requestAnimationFrame(() => {
       map.invalidateSize();
     });
   }, [map]);
-
-  useEffect(() => {
-    const lat = searchParams.get('lat');
-    const lng = searchParams.get('lng');
-    if (lat && lng) {
-      const numLat = Number.parseFloat(lat);
-      const numLng = Number.parseFloat(lng);
-      if (!Number.isNaN(numLat) && !Number.isNaN(numLng)) {
-        map.flyTo([numLat, numLng], 16, { duration: 1.2 });
-      }
-    }
-  }, [map, searchParams]);
 
   return null;
 }
@@ -705,75 +691,15 @@ function CategoryFilterChips({
   onToggleCategory: (category: keyof MapFilters['categories']) => void;
   onToggleDropOffPoints: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const stateRef = useRef({ isDown: false, startX: 0, scrollLeft: 0, moved: false });
-
-  const onDown = (clientX: number) => {
-    const s = stateRef.current;
-    s.isDown = true;
-    s.moved = false;
-    s.startX = clientX - (containerRef.current?.offsetLeft ?? 0);
-    s.scrollLeft = containerRef.current?.scrollLeft ?? 0;
-  };
-
-  const onMove = (clientX: number) => {
-    const s = stateRef.current;
-    if (!s.isDown || !containerRef.current) return;
-    const x = clientX - containerRef.current.offsetLeft;
-    const dx = x - s.startX;
-    if (Math.abs(dx) > 5) s.moved = true;
-    containerRef.current.scrollLeft = s.scrollLeft - dx;
-  };
-
-  const onUp = () => {
-    stateRef.current.isDown = false;
-  };
-
   return (
-    <div
-      ref={containerRef}
-      onMouseDown={(e) => onDown(e.clientX)}
-      onMouseMove={(e) => onMove(e.clientX)}
-      onMouseUp={onUp}
-      onMouseLeave={onUp}
-      onTouchStart={(e) => {
-        e.stopPropagation();
-        onDown(e.touches[0].clientX);
-      }}
-      onTouchMove={(e) => {
-        e.stopPropagation();
-        onMove(e.touches[0].clientX);
-      }}
-      onTouchEnd={(e) => {
-        e.stopPropagation();
-        onUp();
-      }}
-      className="absolute inset-x-0 top-16 z-[1000] cursor-grab [scrollbar-width:none] overflow-x-auto overscroll-x-contain px-3 select-none [-ms-overflow-style:none] active:cursor-grabbing [&::-webkit-scrollbar]:hidden"
-    >
-      <div className="inline-flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onToggleDropOffPoints}
-          className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ring-1 transition-all active:scale-95 ${
-            filters.showDropOffPoints
-              ? 'bg-emerald-600 text-white ring-transparent'
-              : 'bg-white text-gray-600 ring-gray-200/60 hover:bg-gray-50'
-          }`}
-        >
-          <MapPin className="h-3 w-3" />
-          Drop Off
-        </button>
-        <div className="mx-1 h-5 w-px shrink-0 bg-gray-300" />
+    <div className="absolute top-16 left-3 z-[1000] overflow-x-auto">
+      <div className="flex items-center gap-1.5">
         {CATEGORY_CHIPS.map(({ key, label, color }) => {
           const isActive = filters.categories[key];
           return (
             <button
               key={key}
-              type="button"
-              onClick={() => {
-                if (stateRef.current.moved) return;
-                onToggleCategory(key);
-              }}
+              onClick={() => onToggleCategory(key)}
               className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ring-1 transition-all active:scale-95 ${
                 isActive
                   ? 'text-white ring-transparent'
@@ -789,6 +715,18 @@ function CategoryFilterChips({
             </button>
           );
         })}
+        <div className="mx-1 h-5 w-px shrink-0 bg-gray-300" />
+        <button
+          onClick={onToggleDropOffPoints}
+          className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ring-1 transition-all active:scale-95 ${
+            filters.showDropOffPoints
+              ? 'bg-emerald-600 text-white ring-transparent'
+              : 'bg-white text-gray-600 ring-gray-200/60 hover:bg-gray-50'
+          }`}
+        >
+          <MapPin className="h-3 w-3" />
+          Drop Off
+        </button>
       </div>
     </div>
   );
@@ -1036,6 +974,7 @@ interface GrievanceMapProps {
   userLocation?: { lat: number; lng: number } | null;
   onToggleCategory?: (category: keyof MapFilters['categories']) => void;
   onToggleDropOffPoints?: () => void;
+  onOpenLayers?: () => void;
 }
 
 export const GrievanceMap = ({
@@ -1043,6 +982,7 @@ export const GrievanceMap = ({
   userLocation = null,
   onToggleCategory: onToggleCategoryProp,
   onToggleDropOffPoints: onToggleDropOffPointsProp,
+  onOpenLayers,
 }: GrievanceMapProps) => {
   const defaultFilters = useMapFilters();
   const filters = filtersProp ?? defaultFilters.filters;
@@ -1053,8 +993,6 @@ export const GrievanceMap = ({
     lng: number;
     title: string;
   } | null>(null);
-  const [showLayers, setShowLayers] = useState(false);
-  const layerRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const { coords: detectedCoords, accuracy } = useGeoLocation();
   const { data: session } = useSession();
@@ -1101,23 +1039,6 @@ export const GrievanceMap = ({
 
     return true;
   });
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (layerRef.current && !layerRef.current.contains(e.target as Node)) {
-        setShowLayers(false);
-      }
-    };
-    if (showLayers) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showLayers]);
-
-  const handleMapStyleChange = (style: MapStyleOption) => {
-    defaultFilters.setMapStyle(style);
-    setShowLayers(false);
-  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -1171,7 +1092,9 @@ export const GrievanceMap = ({
             />
           )}
 
-          <div className="absolute top-4 left-3 z-[1002] w-[calc(100%-5rem)] max-w-xs sm:left-4 sm:max-w-sm">
+          <ZoomControls />
+
+          <div className="absolute top-4 left-3 z-[1000] w-[calc(100%-5rem)] max-w-xs sm:left-4 sm:max-w-sm">
             <SearchBox />
           </div>
 
@@ -1183,54 +1106,22 @@ export const GrievanceMap = ({
 
           <UserLocationDot coords={detectedCoords} accuracy={accuracy} />
 
-          <UserMarker userLocation={userLocation} />
+          <UserMarker userLocation={userLocation ?? detectedCoords} />
 
           <LocateButton coords={detectedCoords} />
 
-          <div ref={layerRef} className="absolute top-36 right-4 z-[1000]">
-            <button
-              onClick={() => setShowLayers((v) => !v)}
-              title="Map Layers"
-              aria-label="Map Layers"
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95"
-            >
-              <Layers className="h-5 w-5 text-gray-700" />
-            </button>
-            {showLayers && (
-              <div className="absolute top-10 right-0 w-44 rounded-xl bg-white p-2 shadow-xl ring-1 ring-gray-200/60">
-                <p className="text-muted-foreground mb-1.5 px-2 text-[10px] font-bold tracking-wider uppercase">
-                  Map Layers
-                </p>
-                <div className="space-y-0.5">
-                  {(
-                    [
-                      { key: 'standard' as const, label: 'Standard View', icon: MapIcon },
-                      { key: 'satellite' as const, label: 'Satellite View', icon: Satellite },
-                      {
-                        key: 'infrastructure' as const,
-                        label: 'Infrastructure View',
-                        icon: Grid3x3,
-                      },
-                    ] as const
-                  ).map(({ key, label, icon: Icon }) => (
-                    <button
-                      key={key}
-                      onClick={() => handleMapStyleChange(key)}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold transition-all',
-                        filters.mapStyle === key
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:bg-gray-100',
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          {onOpenLayers && (
+            <div className="absolute right-4 bottom-40 z-[1000]">
+              <button
+                onClick={onOpenLayers}
+                title="Map Layers"
+                aria-label="Map Layers"
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white shadow-md ring-1 ring-gray-200/60 transition-all hover:bg-gray-50 active:scale-95 md:h-9 md:w-9"
+              >
+                <Layers className="h-3.5 w-3.5 text-gray-700 md:h-4 md:w-4" />
+              </button>
+            </div>
+          )}
 
           {directionsTarget && (
             <DirectionsControl
@@ -1277,6 +1168,29 @@ export const GrievanceMap = ({
             {detectedCoords
               ? `${detectedCoords.lat.toFixed(4)}, ${detectedCoords.lng.toFixed(4)}`
               : 'Sarpang, Bhutan'}
+          </div>
+
+          <div className="absolute bottom-4 left-4 z-[1000] hidden flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-bold tracking-wider text-gray-500 shadow-sm ring-1 ring-gray-200/50 backdrop-blur-md sm:flex md:gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#d97706]" />
+              <span>Road</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb]" />
+              <span>Waste</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ca8a04]" />
+              <span>Lighting</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0891b2]" />
+              <span>Drainage</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#154212]" />
+              <span>Other</span>
+            </div>
           </div>
         </MapContainer>
       </div>
