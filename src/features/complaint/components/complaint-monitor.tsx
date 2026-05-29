@@ -727,7 +727,7 @@ export const ComplaintMonitor = () => {
                             onChange={(e) =>
                               handleUrgencyChange(complaint.id, e.target.value as ComplaintUrgency)
                             }
-                            className="cursor-pointer rounded-lg border bg-white px-2 py-1 text-xs font-bold tracking-wide uppercase transition-all outline-none"
+                            className="cursor-pointer appearance-none rounded-lg border bg-white px-2 py-1 pr-2 text-xs font-bold tracking-wide uppercase transition-all outline-none"
                             style={{
                               borderColor: URGENCY_BADGE[complaint.urgency]?.text || '#c2c9bb',
                               backgroundColor: URGENCY_BADGE[complaint.urgency]?.bg || '#f3f4f6',
@@ -747,12 +747,12 @@ export const ComplaintMonitor = () => {
                             onChange={(e) =>
                               handleStatusChange(complaint.id, e.target.value as ComplaintStatus)
                             }
-                            className={`cursor-pointer rounded-lg border px-2 py-1 text-xs font-bold tracking-wide uppercase transition-all outline-none ${
+                            className={`cursor-pointer appearance-none rounded-lg border px-2 py-1 pr-2 text-xs font-bold tracking-wide uppercase transition-all outline-none ${
                               complaint.status === 'resolved'
-                                ? 'border-emerald-600 bg-emerald-500 text-white'
+                                ? 'border-emerald-500 bg-emerald-50 text-emerald-500'
                                 : complaint.status === 'in-progress'
-                                  ? 'border-blue-600 bg-blue-500 text-white'
-                                  : 'border-orange-500 bg-orange-400 text-white'
+                                  ? 'border-blue-500 bg-blue-50 text-blue-500'
+                                  : 'border-orange-500 bg-orange-50 text-orange-500'
                             }`}
                           >
                             {Object.entries(STATUS_LABELS).map(([key, label]) => (
@@ -849,7 +849,7 @@ export const ComplaintMonitor = () => {
                               approveComplaint.isPending &&
                               approveComplaint.variables === complaint.id
                             }
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 transition-all hover:bg-amber-100 disabled:opacity-50"
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-600 px-3 py-1 text-xs font-bold text-white transition-all hover:bg-amber-700 disabled:opacity-50"
                           >
                             <UserCheck className="h-3 w-3" />
                             {approveComplaint.isPending &&
@@ -860,7 +860,7 @@ export const ComplaintMonitor = () => {
                           <button
                             type="button"
                             onClick={() => setDisapproveConfirmId(complaint.id)}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-all hover:bg-red-100"
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white transition-all hover:bg-red-700"
                             title="Permanently delete this report"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -939,7 +939,7 @@ export const ComplaintMonitor = () => {
                 type="button"
                 onClick={handleBulkApprove}
                 disabled={approveComplaint.isPending}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700 transition-all hover:bg-amber-200 disabled:opacity-50"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-amber-600 px-3 py-1 text-xs font-bold text-white transition-all hover:bg-amber-700 disabled:opacity-50"
               >
                 <UserCheck className="h-3 w-3" />
                 {approveComplaint.isPending ? 'Approving...' : 'Approve All'}
@@ -947,7 +947,7 @@ export const ComplaintMonitor = () => {
               <button
                 type="button"
                 onClick={() => setBulkDisapprove(true)}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700 transition-all hover:bg-red-200"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white transition-all hover:bg-red-700"
               >
                 <Trash2 className="h-3 w-3" />
                 Reject All
@@ -1239,10 +1239,10 @@ export const ComplaintMonitor = () => {
                       }}
                       className={`cursor-pointer rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase outline-none ${
                         previewComplaint.status === 'resolved'
-                          ? 'bg-emerald-500 text-white'
+                          ? 'bg-emerald-50 text-emerald-500'
                           : previewComplaint.status === 'in-progress'
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-orange-400 text-white'
+                            ? 'bg-blue-50 text-blue-500'
+                            : 'bg-orange-50 text-orange-500'
                       }`}
                     >
                       {Object.entries(STATUS_LABELS).map(([key, label]) => (
