@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from 'react';
+import { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import {
   ChevronDown,
   Clock,
@@ -9,7 +9,6 @@ import {
   Download,
   FileSpreadsheet,
   FileDown,
-  Link2,
   X,
   UserCheck,
   Trash2,
@@ -26,7 +25,6 @@ import { ImageLightbox } from '@/features/auth/grievance/components/image-lightb
 import { Pagination } from '@/components/ui/pagination';
 import {
   URGENCY_BADGE,
-  STATUS_BADGE,
   CATEGORY_LABELS,
   CATEGORY_COLORS,
   STATUS_LABELS,
@@ -35,11 +33,7 @@ import {
 import type { Complaint, ComplaintUrgency, ComplaintStatus } from '@/features/complaint/types';
 import { useApproveComplaint } from '@/features/complaint/api/use-approve-complaint';
 import { useDisapproveComplaint } from '@/features/complaint/api/use-disapprove-complaint';
-import {
-  awardPointsForStatus,
-  revokeChildPoints,
-  restoreMasterPoints,
-} from '@/features/complaint/utils/award-points';
+import { awardPointsForStatus } from '@/features/complaint/utils/award-points';
 
 type ActiveTab = 'total' | 'unapproved' | ComplaintStatus;
 
@@ -50,9 +44,6 @@ export const ComplaintMonitor = () => {
   const [urgencyFilter, setUrgencyFilter] = useState<ComplaintUrgency | 'all'>('all');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [hideDuplicates, setHideDuplicates] = useState(true);
-  const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
-  const [unlinkTargetId, setUnlinkTargetId] = useState<string | null>(null);
   const [previewComplaint, setPreviewComplaint] = useState<Complaint | null>(null);
   const [disapproveConfirmId, setDisapproveConfirmId] = useState<string | null>(null);
   const [bulkDisapprove, setBulkDisapprove] = useState(false);
@@ -145,75 +136,6 @@ export const ComplaintMonitor = () => {
     }
   };
 
-  const handleMerge = async (complaintId: string, masterId: string) => {
-    const child = complaints.find((c) => c.id === complaintId);
-    if (!child) return;
-
-    // If child has children, reassign them to the new master
-    const grandchildren = childrenMap.get(complaintId);
-
-    const { error } = await supabase
-      .from('grievances')
-      .update({ parent_id: masterId })
-      .eq('id', complaintId);
-
-    if (error) {
-      alert(`Failed to link complaint: ${error.message}`);
-      return;
-    }
-
-    // Reassign children of the merged complaint to the new master
-    if (grandchildren && grandchildren.length > 0) {
-      const { error: gcError } = await supabase
-        .from('grievances')
-        .update({ parent_id: masterId })
-        .in(
-          'id',
-          grandchildren.map((g) => g.id),
-        );
-      if (gcError) console.error('Failed to reassign merged children:', gcError);
-    }
-
-    // Revoke child's points when merged
-    try {
-      await revokeChildPoints(child.reporter_id, child.id, child.bonus_awarded);
-    } catch {
-      // non-blocking
-    }
-
-    setMergeTargetId(null);
-    queryClient.invalidateQueries({ queryKey: complaintKeys.all });
-  };
-
-  const handleUnlink = async (complaintId: string) => {
-    const child = complaints.find((c) => c.id === complaintId);
-    if (!child) return;
-
-    setUnlinkTargetId(null);
-
-    const { error } = await supabase
-      .from('grievances')
-      .update({ parent_id: null })
-      .eq('id', complaintId);
-
-    if (error) {
-      alert(`Failed to unlink complaint: ${error.message}`);
-      return;
-    }
-
-    // Restore child's points as master
-    try {
-      await restoreMasterPoints(child.reporter_id, child.id, child.status, child.bonus_awarded);
-    } catch {
-      // non-blocking
-    }
-
-    queryClient.invalidateQueries({ queryKey: grievanceKeys.all });
-    queryClient.invalidateQueries({ queryKey: leaderboardKeys.all() });
-    queryClient.invalidateQueries({ queryKey: profileKeys.current() });
-    queryClient.invalidateQueries({ queryKey: complaintKeys.all });
-  };
-
   useEffect(() => {
     startTransition(() => {
       setSelectedIds(new Set());
@@ -284,25 +206,9 @@ export const ComplaintMonitor = () => {
       if (activeTab === 'unapproved') return !c.approved;
       return c.status === activeTab;
     })
-    .filter((c) => urgencyFilter === 'all' || c.urgency === urgencyFilter)
-    .filter((c) => !hideDuplicates || c.parent_id === null);
+    .filter((c) => urgencyFilter === 'all' || c.urgency === urgencyFilter);
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const childrenMap = useMemo(() => {
-    const map = new Map<string, Complaint[]>();
-    for (const c of complaints) {
-      if (c.parent_id) {
-        const existing = map.get(c.parent_id);
-        if (existing) existing.push(c);
-        else map.set(c.parent_id, [c]);
-      }
-    }
-    return map;
-  }, [complaints]);
-
-  const masterOptions = complaints.filter((c) => c.parent_id === null);
-
-  const colCount = activeTab === 'unapproved' ? 5 : 7;
+  const colCount = activeTab === 'unapproved' ? 5 : 6;
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -575,33 +481,11 @@ export const ComplaintMonitor = () => {
             <option value="low">Low</option>
           </select>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span
-            className="text-[10px] font-bold tracking-wide uppercase"
-            style={{ color: '#72796e' }}
-          >
-            Hide Dup:
-          </span>
-          <button
-            type="button"
-            onClick={() => setHideDuplicates(!hideDuplicates)}
-            className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-              hideDuplicates ? 'bg-green-600' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                hideDuplicates ? 'translate-x-[14px]' : 'translate-x-[2px]'
-              }`}
-            />
-          </button>
-        </div>
-        {activeTab !== 'total' || urgencyFilter !== 'all' || !hideDuplicates ? (
+        {activeTab !== 'total' || urgencyFilter !== 'all' ? (
           <button
             onClick={() => {
               setActiveTab('total');
               setUrgencyFilter('all');
-              setHideDuplicates(true);
               setCurrentPage(1);
             }}
             className="rounded-md px-2 py-1 text-[11px] font-semibold transition-all hover:scale-105"
@@ -654,11 +538,7 @@ export const ComplaintMonitor = () => {
                   <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
                     Actions
                   </th>
-                ) : (
-                  <th className="bg-slate-50/75 px-4 py-3.5 text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                    Link
-                  </th>
-                )}
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -868,60 +748,7 @@ export const ComplaintMonitor = () => {
                           </button>
                         </div>
                       </td>
-                    ) : (
-                      <td className="px-4 py-3">
-                        {(() => {
-                          const children = childrenMap.get(complaint.id);
-                          if (children && children.length > 0) {
-                            return (
-                              <span
-                                className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
-                                title={children.map((c) => c.title).join(', ')}
-                              >
-                                <Link2 className="h-3 w-3" />
-                                {children.length}
-                              </span>
-                            );
-                          }
-                          if (complaint.parent_id) {
-                            return (
-                              <span className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-medium text-slate-400">
-                                  Linked
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => setUnlinkTargetId(complaint.id)}
-                                  className="rounded p-0.5 text-red-400 transition-all hover:bg-red-50 hover:text-red-600"
-                                  title="Unlink from parent"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </span>
-                            );
-                          }
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => setMergeTargetId(complaint.id)}
-                              className={`rounded-lg p-1.5 text-slate-400 transition-all hover:scale-110 hover:bg-slate-100 hover:text-slate-600 ${
-                                complaint.status === 'resolved'
-                                  ? 'cursor-not-allowed opacity-30'
-                                  : ''
-                              }`}
-                              title={
-                                complaint.status === 'resolved'
-                                  ? 'Resolved complaints cannot be linked'
-                                  : 'Link as duplicate of a master complaint'
-                              }
-                              disabled={complaint.status === 'resolved'}
-                            >
-                              <Link2 className="h-3.5 w-3.5" />
-                            </button>
-                          );
-                        })()}
-                      </td>
-                    )}
+                    ) : null}
                   </tr>
                 ))
               )}
@@ -970,187 +797,8 @@ export const ComplaintMonitor = () => {
         </div>
       </div>
 
-      {mergeTargetId &&
-        (() => {
-          const target = complaints.find((c) => c.id === mergeTargetId);
-          const statusOrder = ['pending', 'in-progress', 'resolved'];
-          const targetStatusIndex = statusOrder.indexOf(target?.status ?? 'pending');
-          const masters = masterOptions.filter(
-            (m) => m.id !== mergeTargetId && statusOrder.indexOf(m.status) >= targetStatusIndex,
-          );
-          return (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-              onClick={() => setMergeTargetId(null)}
-            >
-              <div
-                className="mx-4 w-full max-w-md rounded-xl border bg-white p-6 shadow-xl"
-                onClick={(e) => e.stopPropagation()}
-                style={{ borderColor: '#e5e2e1' }}
-              >
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-sm font-bold" style={{ color: '#1c1b1b' }}>
-                    Link Complaint as Duplicate
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setMergeTargetId(null)}
-                    className="rounded-lg p-1 transition-all hover:bg-gray-100"
-                  >
-                    <X className="h-4 w-4" style={{ color: '#72796e' }} />
-                  </button>
-                </div>
-                {target && (
-                  <p className="mb-3 text-xs" style={{ color: '#72796e' }}>
-                    Linking:{' '}
-                    <span className="font-semibold" style={{ color: '#42493e' }}>
-                      {target.title}
-                    </span>
-                  </p>
-                )}
-                {masters.length === 0 ? (
-                  <p className="py-4 text-center text-xs" style={{ color: '#c2c9bb' }}>
-                    No eligible master complaints found
-                  </p>
-                ) : (
-                  <div className="max-h-80 space-y-2 overflow-y-auto">
-                    {masters.map((master) => (
-                      <button
-                        key={master.id}
-                        type="button"
-                        onClick={() => handleMerge(mergeTargetId, master.id)}
-                        className="flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left text-xs transition-all hover:bg-gray-50"
-                        style={{ borderColor: '#e5e2e1', color: '#42493e' }}
-                      >
-                        {master.image_url ? (
-                          <img
-                            src={master.image_url}
-                            alt=""
-                            className="h-14 w-20 shrink-0 rounded-md object-cover shadow-sm"
-                          />
-                        ) : (
-                          <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-md bg-gray-100">
-                            <span className="text-[10px]" style={{ color: '#c2c9bb' }}>
-                              No img
-                            </span>
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium" style={{ color: '#1c1b1b' }}>
-                            {master.title}
-                          </p>
-                          <p
-                            className="mt-0.5 line-clamp-2 text-[11px]"
-                            style={{ color: '#72796e' }}
-                          >
-                            {master.description}
-                          </p>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                            <span
-                              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase"
-                              style={{
-                                backgroundColor: CATEGORY_COLORS[master.category]
-                                  ? `${CATEGORY_COLORS[master.category]}1a`
-                                  : '#f3f4f6',
-                                color: CATEGORY_COLORS[master.category] || '#6b7280',
-                              }}
-                            >
-                              {CATEGORY_LABELS[master.category] || master.category}
-                            </span>
-                            <span
-                              className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase"
-                              style={{
-                                backgroundColor: URGENCY_BADGE[master.urgency]?.bg || '#f3f4f6',
-                                color: URGENCY_BADGE[master.urgency]?.text || '#6b7280',
-                              }}
-                            >
-                              {URGENCY_LABELS[master.urgency]}
-                            </span>
-                            <span
-                              className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase"
-                              style={{
-                                backgroundColor: STATUS_BADGE[master.status]?.bg || '#f3f4f6',
-                                color: STATUS_BADGE[master.status]?.text || '#6b7280',
-                              }}
-                            >
-                              {STATUS_LABELS[master.status]}
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      {unlinkTargetId &&
-        (() => {
-          const child = complaints.find((c) => c.id === unlinkTargetId);
-          const parent = child ? complaints.find((c) => c.id === child.parent_id) : null;
-          return (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-              onClick={() => setUnlinkTargetId(null)}
-            >
-              <div
-                className="mx-4 w-full max-w-sm rounded-xl border bg-white p-6 shadow-xl"
-                onClick={(e) => e.stopPropagation()}
-                style={{ borderColor: '#e5e2e1' }}
-              >
-                <h3 className="mb-2 text-sm font-bold" style={{ color: '#1c1b1b' }}>
-                  Unlink Complaint?
-                </h3>
-                <p className="mb-1 text-xs" style={{ color: '#72796e' }}>
-                  This will unlink{' '}
-                  <span className="font-semibold" style={{ color: '#42493e' }}>
-                    {child?.title}
-                  </span>{' '}
-                  from its parent
-                  {parent && (
-                    <>
-                      {' '}
-                      (
-                      <span className="font-semibold" style={{ color: '#42493e' }}>
-                        {parent.title}
-                      </span>
-                      )
-                    </>
-                  )}
-                  .
-                </p>
-                <p className="mb-4 text-xs" style={{ color: '#c2c9bb' }}>
-                  Points will be restored as if it were an independent complaint.
-                </p>
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setUnlinkTargetId(null)}
-                    className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all hover:bg-gray-100"
-                    style={{ color: '#72796e' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleUnlink(unlinkTargetId)}
-                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-red-700"
-                  >
-                    Unlink
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
       {previewComplaint &&
         (() => {
-          const children = childrenMap.get(previewComplaint.id);
-          const parent = previewComplaint.parent_id
-            ? complaints.find((c) => c.id === previewComplaint.parent_id)
-            : null;
-          const parentChildren = parent ? childrenMap.get(parent.id) : null;
           const statusPoints: Record<string, number> = {
             pending: 1,
             'in-progress': 2,
@@ -1340,72 +988,6 @@ export const ComplaintMonitor = () => {
                       alt="Resolved"
                       className="mt-1 max-h-40 w-full rounded-lg object-contain shadow-sm"
                     />
-                  </div>
-                )}
-                {parent && (
-                  <div className="mt-4 border-t pt-3" style={{ borderColor: '#e5e2e1' }}>
-                    <p className="mb-2 text-xs font-bold" style={{ color: '#92400e' }}>
-                      <Link2 className="mr-1 inline h-3 w-3" />
-                      Linked to Parent
-                    </p>
-                    <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-2">
-                      {parent.image_url && (
-                        <img
-                          src={parent.image_url}
-                          alt=""
-                          className="h-10 w-16 shrink-0 rounded-md object-cover"
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium" style={{ color: '#92400e' }}>
-                          {parent.title}
-                        </p>
-                        <p className="mt-0.5 truncate text-[11px]" style={{ color: '#72796e' }}>
-                          {parent.description}
-                        </p>
-                      </div>
-                    </div>
-                    {parentChildren && parentChildren.length > 1 && (
-                      <p className="mt-1 text-[10px]" style={{ color: '#72796e' }}>
-                        Parent has {parentChildren.length} linked duplicate
-                        {parentChildren.length > 1 ? 's' : ''}
-                      </p>
-                    )}
-                  </div>
-                )}
-                {children && children.length > 0 && (
-                  <div className="mt-4 border-t pt-3" style={{ borderColor: '#e5e2e1' }}>
-                    <p className="mb-2 text-xs font-bold" style={{ color: '#42493e' }}>
-                      <Link2 className="mr-1 inline h-3 w-3" />
-                      Merged Complaints ({children.length})
-                    </p>
-                    <div className="max-h-40 space-y-2 overflow-y-auto">
-                      {children.map((child) => (
-                        <div
-                          key={child.id}
-                          className="flex items-start gap-2 rounded-lg bg-gray-50 p-2"
-                        >
-                          {child.image_url && (
-                            <img
-                              src={child.image_url}
-                              alt=""
-                              className="h-10 w-16 shrink-0 rounded-md object-cover"
-                            />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className="truncate text-xs font-medium"
-                              style={{ color: '#42493e' }}
-                            >
-                              {child.title}
-                            </p>
-                            <p className="truncate text-[11px]" style={{ color: '#72796e' }}>
-                              {child.description}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
               </div>
