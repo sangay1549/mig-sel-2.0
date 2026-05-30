@@ -99,7 +99,7 @@ insert into public.chatbot_knowledge (question, answer, keywords) values
  array['no account', 'guest', 'without login', 'public access', 'anonymous']),
 
 ('What user roles are there?',
- 'There are three roles: regular user (resident), inspector, and admin. Regular users can report issues and engage with the community. Inspectors can manage waste records. Admins have full access to the dashboard.',
+ 'There are three role levels: regular user (resident, role is null), inspector, and admin. Regular users can report issues and engage with the community. Inspectors can manage waste records. Admins have full access to the dashboard.',
  array['roles', 'permissions', 'admin role', 'inspector role', 'user role', 'access']),
 
 ('How do I become an admin?',
@@ -136,4 +136,60 @@ insert into public.chatbot_knowledge (question, answer, keywords) values
 
 ('What does the Inspector do?',
  'Inspectors can submit waste collection records through the Inspector page. This helps track waste management activities in the city.',
- array['inspector', 'waste record', 'waste collection', 'inspector role', 'submit waste']);
+ array['inspector', 'waste record', 'waste collection', 'inspector role', 'submit waste']),
+
+('What is GMC Civic Connect 2.0?',
+ 'GMC Civic Connect 2.0 is the redesigned version of mig-sel featuring a modern smart city interface with a green-plus-white minimalist theme, glassmorphism accents, mobile-first responsive design, and a professional government-tech aesthetic for Gelephu Mindfulness City.',
+ array['civic connect', '2.0', 'redesign', 'new version', 'smart city', 'modern ui']),
+
+('How does the new bottom navigation work?',
+ 'The bottom navigation bar gives you quick access to Discover (Map), Community, Report (center FAB), Rankings (Leaderboard), and Chat. A secondary row below provides access to Shop and Profile/Admin. The center FAB button is elevated with a green gradient for quick report access.',
+ array['navigation', 'bottom nav', 'menu', 'navigate', 'fab', 'bottom bar']),
+
+('What is the emergency alert section?',
+ 'The emergency alert banner on the Community page shows real-time urgent notifications from GMC, such as weather warnings or public safety alerts. It appears at the top of the feed with a distinctive amber styling and live indicator.',
+ array['emergency', 'alert', 'warning', 'weather', 'safety alert', 'urgent']),
+
+('How do I use the live city updates?',
+ 'The Community page features live city stats showing reports today, active alerts, and resolution rate. The header also displays a pulsing "Live" indicator to show the platform is receiving real-time updates.',
+ array['live', 'city updates', 'stats', 'real time', 'dashboard stats', 'live indicator']),
+
+('What is the Discover page?',
+ 'The Discover page (accessible from the Map icon in the bottom nav) shows an interactive map with a glassmorphism bottom card overlay displaying active reports in your area. Use the layer and location buttons to customize your view.',
+ array['discover', 'map overlay', 'glassmorphism', 'map widgets', 'interactive map']),
+
+('How has the profile page changed?',
+ 'The redesigned profile page features a modern card layout with a gradient avatar section, prominent points display with trophy icon, stats grid (rank, reports, resolved), and a redesigned points breakdown section with green color accents.',
+ array['profile redesign', 'new profile', 'points display', 'avatar', 'stats']),
+
+('What is the new community feed look like?',
+ 'The community feed now has a cleaner, more social-media-like layout with quick stats cards at the top (reports today, active alerts, resolution rate), an emergency alert banner, and beautifully styled feed cards with subtle shadows and rounded corners.',
+ array['community redesign', 'feed layout', 'social feed', 'feed cards', 'new community']),
+
+('How does the new admin dashboard look?',
+ 'The admin dashboard has been modernized with a cleaner sidebar layout, summary stat cards, gradient green accent styling, and improved visual hierarchy. The sidebar has a glassmorphism effect with a compact, professional design.',
+ array['admin redesign', 'new admin', 'dashboard layout', 'admin panel redesign', 'admin sidebar']),
+
+ ('What design system does GMC Civic Connect 2.0 use?',
+  'The new design uses a green and white minimalist theme with Manrope font, soft shadows, rounded cards (radius-xl), glassmorphism accents on navigation elements, gradient green surfaces for primary actions, and subtle animations throughout the interface.',
+  array['design', 'theme', 'green theme', 'ui design', 'style', 'glassmorphism', 'gradient']),
+
+('Why do I get "profiles_role_check" error on signup?',
+  'This error means the signup trigger tried to insert an invalid role value. The profiles.role column only allows admin, inspector, official, or NULL (regular user). If you see this error, the database trigger function handle_new_user() needs to insert NULL instead of "user". This was fixed in a recent database migration.',
+  array['signup error', 'profile error', 'role check', 'constraint violation', 'profiles_role_check', 'cannot sign up']),
+
+('I was assigned the official role but the app still shows the regular user page. What should I do?',
+  'After an admin assigns you the official role, try refreshing the page (full browser refresh). If that does not work, sign out and sign back in. The role update needs to refresh your session to take full effect. The app now also queries the database directly as a fallback, so a page refresh should resolve it.',
+  array['official role not working', 'role not applied', 'still regular user', 'official role stuck', 'role change not reflecting', 'session refresh', 'role assignment not working']),
+
+('Why does the Community feed show "No activity yet. Be the first!" even when there are reports?',
+  'This happened because of two issues that have now been fixed: (1) The feed query was filtering to only show official announcements due to an accidental filter, and (2) grievance reports were not being added to the community_feed table when submitted. After the fix, new grievance reports automatically appear in the feed alongside official announcements.',
+  array['community feed empty', 'no activity', 'feed not showing', 'empty feed', 'feed bug', 'community feed not working', 'reports not showing']),
+
+('How do grievance reports appear in the Community feed?',
+  'When you submit a grievance report, it is now automatically added to the Community feed. Your username and initials from your profile are displayed alongside the report title. The feed shows all content (grievances + official announcements) sorted by newest first.',
+  array['feed grievance showing', 'how feed works', 'feed content', 'report in feed', 'community feed grievance']),
+
+('Can I delete a feed item?',
+  'You can delete your own feed items. The delete action now correctly removes the entry from the community_feed table. Only the feed entry author can delete their own posts due to Row-Level Security policies.',
+  array['delete feed', 'remove feed item', 'delete post', 'remove post']);

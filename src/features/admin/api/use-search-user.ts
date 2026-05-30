@@ -8,6 +8,7 @@ export type SearchedUser = {
   avatar_url: string | null;
   points: number;
   role: string | null;
+  verified: boolean;
   created_at: string;
 };
 

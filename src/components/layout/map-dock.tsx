@@ -4,13 +4,10 @@ import {
   Users,
   Trophy,
   Camera,
-  MessageCircle,
   ShoppingBag,
   User,
   type LucideIcon,
 } from 'lucide-react';
-import { useIsAdmin } from '@/features/auth/api/use-is-admin';
-import { useIsInspector } from '@/features/auth/api/use-is-inspector';
 
 interface NavItemProps {
   icon: LucideIcon;
@@ -35,22 +32,14 @@ const NavItem = ({ icon: Icon, label, isActive, onClick, className = '' }: NavIt
 export const MapDock = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: isAdmin } = useIsAdmin();
-  const { data: isInspector } = useIsInspector();
 
   const activeTab = (() => {
     const path = location.pathname;
     if (path.startsWith('/map')) return 'map';
     if (path.startsWith('/community')) return 'community';
     if (path.startsWith('/leaderboard')) return 'leaderboard';
-    if (path.startsWith('/chat')) return 'chat';
     if (path.startsWith('/shop')) return 'shop';
-    if (
-      path.startsWith('/profile') ||
-      path.startsWith('/dashboard') ||
-      path.startsWith('/inspector')
-    )
-      return 'profile';
+    if (path.startsWith('/profile')) return 'profile';
     return '';
   })();
 
@@ -106,16 +95,6 @@ export const MapDock = () => {
 
           {/* Right group */}
           <div className="flex flex-1 items-center justify-around">
-            {/* Chat */}
-            <NavItem
-              icon={MessageCircle}
-              label="Chat"
-              isActive={activeTab === 'chat'}
-              onClick={() => {
-                navigate('/chat');
-              }}
-            />
-
             {/* Shop */}
             <NavItem
               icon={ShoppingBag}
@@ -126,19 +105,13 @@ export const MapDock = () => {
               }}
             />
 
-            {/* Profile / Admin / Inspector */}
+            {/* Profile */}
             <NavItem
               icon={User}
-              label={isAdmin ? 'Admin' : isInspector ? 'Dashboard' : 'Profile'}
+              label="Profile"
               isActive={activeTab === 'profile'}
               onClick={() => {
-                if (isAdmin) {
-                  navigate('/dashboard');
-                } else if (isInspector) {
-                  navigate('/inspector');
-                } else {
-                  navigate('/profile');
-                }
+                navigate('/profile');
               }}
             />
           </div>

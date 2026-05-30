@@ -1,54 +1,64 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
-  Upload,
-  LoaderPinwheel,
-  CheckCheck,
   Camera,
   Loader2,
-  Sparkles,
   LogOut,
+  Trophy,
+  ShoppingBag,
+  ChevronRight,
+  Settings,
+  FileText,
+  UserPen,
+  Megaphone,
+  Building2,
+  Edit3,
+  X,
+  User,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useUserProfile } from '@/features/gamification/api/use-user-profile';
 import { useUpdateProfile } from '@/features/gamification/api/use-update-profile';
 import { uploadAvatar } from '@/features/gamification/api/use-upload-avatar';
 import { useCurrentUser } from '@/features/auth/api/use-current-user';
 import { useSignOut } from '@/features/auth/api/use-sign-out';
+import { useIsOfficial } from '@/features/announcements/api/use-is-official';
 
-const POINTS_BREAKDOWN = [
-  { icon: Upload, label: 'Submit a report', points: 1, color: 'text-blue-600', bg: 'bg-blue-50' },
-  {
-    icon: LoaderPinwheel,
-    label: 'Status → In Progress',
-    points: 1,
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-  },
-  {
-    icon: CheckCheck,
-    label: 'Status → Resolved',
-    points: 2,
-    color: 'text-green-600',
-    bg: 'bg-green-50',
-  },
-];
+interface MenuItemProps {
+  icon: typeof FileText;
+  label: string;
+  subtitle?: string;
+  onClick: () => void;
+}
+
+const MenuItem = ({ icon: Icon, label, subtitle, onClick }: MenuItemProps) => (
+  <button
+    onClick={onClick}
+    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-muted/50 active:bg-muted/80"
+  >
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+      <Icon className="h-5 w-5 text-primary" />
+    </div>
+    <div className="min-w-0 flex-1 text-left">
+      <p className="text-sm font-semibold text-foreground">{label}</p>
+      {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    </div>
+    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+  </button>
+);
 
 export const ProfilePage = () => {
   const navigate = useNavigate();
   const { data: profile } = useUserProfile();
   const { user } = useCurrentUser();
+  const { data: isOfficial } = useIsOfficial();
   const mutation = useUpdateProfile();
   const signOut = useSignOut();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.username ?? '');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(profile?.avatar_url ?? null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-
-  const hasUsername = !!profile?.username;
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -57,7 +67,7 @@ export const ProfilePage = () => {
     setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleSave = async () => {
+  const handleSaveProfile = async () => {
     if (!user?.id) return;
     try {
       let avatarUrl = avatarPreview;
@@ -66,55 +76,42 @@ export const ProfilePage = () => {
       }
       await mutation.mutateAsync({
         userId: user.id,
-        ...(hasUsername ? {} : { username: displayName.trim() || null }),
+        username: displayName.trim() || null,
         avatar_url: avatarUrl,
       });
-    } catch {
-      // error handled by mutation
-    }
+      setEditing(false);
+    } catch { /* handled by mutation */ }
   };
 
-  const hasNameChanged = !hasUsername && displayName !== (profile?.username ?? '');
-  const hasAvatarChanged = avatarFile !== null;
-  const hasChanges = hasNameChanged || hasAvatarChanged;
-  const isSaving = mutation.isPending;
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50">
-      <div className="mx-auto max-w-2xl px-4 py-6">
-        <div className="mb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(-1)}
-            className="text-gray-500 hover:text-gray-800"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back
-          </Button>
+    <div className="space-y-0 pb-8">
+      {/* ── Profile Header ── */}
+      <div className="gradient-green relative overflow-hidden px-6 pt-8 pb-6 rounded-b-[2rem]">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.08]">
+          <div className="absolute -top-12 -right-12 h-48 w-48 rounded-full bg-white" />
+          <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white" />
+          <div className="absolute top-1/2 left-1/3 h-24 w-24 -translate-y-1/2 rounded-full bg-white" />
         </div>
 
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-black text-gray-900">Profile</h1>
-        </div>
-
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-          <div className="mb-6 flex flex-col items-center gap-4">
-            <div className="relative">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-gray-100 to-gray-200 shadow-inner ring-2 ring-gray-200">
+        <div className="relative z-10">
+          <div className="flex items-center gap-5">
+            {/* Avatar */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative shrink-0"
+            >
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-[3px] border-white/60 shadow-xl">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <Camera className="h-8 w-8 text-gray-400" />
+                  <div className="flex h-full w-full items-center justify-center bg-white/20 text-white">
+                    <User className="h-8 w-8" />
+                  </div>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-primary hover:bg-primary/90 absolute right-0 bottom-0 flex h-7 w-7 items-center justify-center rounded-full text-white shadow-lg transition-all hover:scale-110"
-              >
-                <Upload className="h-3.5 w-3.5" />
-              </button>
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 transition-colors group-hover:bg-black/25">
+                <Camera className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -122,88 +119,128 @@ export const ProfilePage = () => {
                 className="hidden"
                 onChange={handleAvatarChange}
               />
-            </div>
-          </div>
+            </button>
 
-          <div className="mb-6 space-y-2">
-            <label className="text-sm font-bold text-gray-700">Display Name</label>
-            {hasUsername ? (
-              <>
-                <div className="rounded-xl border border-gray-100 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-500">
-                  {profile?.username}
-                </div>
-                <p className="text-xs text-gray-400">Username can only be set once.</p>
-              </>
-            ) : (
-              <Input
-                placeholder="Enter your display name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={50}
-              />
-            )}
-          </div>
-
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || !hasChanges}
-            className="w-full rounded-xl font-bold shadow-sm"
-          >
-            {isSaving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-
-          <hr className="my-6 border-gray-100" />
-
-          {profile && (
-            <div className="mb-6 rounded-xl bg-gradient-to-br from-gray-50 to-white p-4 ring-1 ring-gray-100">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-gray-600">Your Points</span>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-gray-900">{profile.points}</span>
-                  <span className="text-xs font-semibold text-gray-400">pts</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <h3 className="mb-3 flex items-center gap-1.5 text-xs font-bold tracking-wider text-gray-400 uppercase">
-            <Sparkles className="h-3 w-3" />
-            How points work
-          </h3>
-          <div className="space-y-2">
-            {POINTS_BREAKDOWN.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.label}
-                  className="flex items-center gap-3 rounded-xl p-3 transition-all hover:-translate-y-0.5 hover:bg-gray-50"
-                >
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.bg} ring-1 ring-black/5 ring-inset`}
+            {/* Name + rank */}
+            <div className="min-w-0 flex-1">
+              {editing ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Your name"
+                    maxLength={50}
+                    className="h-10 flex-1 bg-white/20 text-base font-bold text-white placeholder:text-white/60"
+                  />
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={mutation.isPending}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white hover:bg-white/30"
                   >
-                    <Icon className={`h-4 w-4 ${item.color}`} />
-                  </div>
-                  <span className="flex-1 text-sm font-medium text-gray-700">{item.label}</span>
-                  <div className="flex items-baseline gap-0.5">
-                    <span className="text-lg font-black text-gray-900">+{item.points}</span>
-                  </div>
+                    {mutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Edit3 className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { setEditing(false); setDisplayName(profile?.username ?? ''); setAvatarPreview(profile?.avatar_url ?? null); setAvatarFile(null); }}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white hover:bg-white/30"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-              );
-            })}
+              ) : (
+                <>
+                  <h1 className="truncate text-xl font-bold text-white">{profile?.username ?? 'Set your name'}</h1>
+                  <p className="mt-0.5 text-sm text-white/70">GMC Resident</p>
+                </>
+              )}
+            </div>
+
+            {/* Settings */}
+            <button
+              onClick={() => setEditing((v) => !v)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
           </div>
 
-          <hr className="my-6 border-gray-100" />
 
-          <button
-            onClick={() => signOut.mutate()}
-            disabled={signOut.isPending}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-          >
-            <LogOut className="h-4 w-4" />
-            {signOut.isPending ? 'Signing out...' : 'Sign Out'}
-          </button>
         </div>
+      </div>
+
+      {/* ── My Activities ── */}
+      <div className="mt-6 px-4">
+        <h2 className="mb-2 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+          My Activities
+        </h2>
+        <div className="overflow-hidden rounded-2xl border border-border/50 bg-card shadow-sm">
+          <MenuItem
+            icon={FileText}
+            label="My Reports"
+            subtitle="Reports you've submitted"
+            onClick={() => navigate('/my-reports')}
+          />
+          <div className="mx-3 border-t border-border/50" />
+          <MenuItem
+            icon={UserPen}
+            label="My Posts"
+            subtitle="Your activity in the feed"
+            onClick={() => navigate('/my-posts')}
+          />
+          <div className="mx-3 border-t border-border/50" />
+          <MenuItem
+            icon={Trophy}
+            label="Leaderboard"
+            subtitle="See how you rank"
+            onClick={() => navigate('/leaderboard')}
+          />
+          <div className="mx-3 border-t border-border/50" />
+          <MenuItem
+            icon={ShoppingBag}
+            label="Shop"
+            subtitle="Redeem your points"
+            onClick={() => navigate('/shop')}
+          />
+        </div>
+      </div>
+
+      {/* ── Official Section ── */}
+      {isOfficial && (
+        <div className="mt-6 px-4">
+          <h2 className="mb-2 text-xs font-bold tracking-wider text-muted-foreground uppercase">
+            Official
+          </h2>
+          <div className="overflow-hidden rounded-2xl border border-border/50 bg-card shadow-sm">
+            <MenuItem
+              icon={Building2}
+              label="Official Portal"
+              subtitle="Manage announcements"
+              onClick={() => navigate('/official')}
+            />
+            <div className="mx-3 border-t border-border/50" />
+            <MenuItem
+              icon={Megaphone}
+              label="My Announcements"
+              subtitle="View your published posts"
+              onClick={() => navigate('/official')}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Sign Out ── */}
+      <div className="mt-8 px-4">
+        <button
+          onClick={() => signOut.mutate()}
+          disabled={signOut.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+        >
+          <LogOut className="h-4 w-4" />
+          {signOut.isPending ? 'Signing out...' : 'Sign Out'}
+        </button>
       </div>
     </div>
   );

@@ -28,6 +28,13 @@ const iconMap: Record<NavView, typeof ClipboardList> = {
   knowledge: Brain,
 };
 
+const SUMMARY = [
+  { label: 'Total Complaints', value: '--', color: 'text-primary', bg: 'bg-primary/10' },
+  { label: 'Resolved', value: '--', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { label: 'In Progress', value: '--', color: 'text-blue-600', bg: 'bg-blue-50' },
+  { label: 'Pending', value: '--', color: 'text-amber-600', bg: 'bg-amber-50' },
+];
+
 export const AdminPage = () => {
   const [activeView, setActiveView] = useState<NavView>('complaint');
   const [analyticsTab, setAnalyticsTab] = useState<'waste' | 'complaint'>('complaint');
@@ -38,29 +45,38 @@ export const AdminPage = () => {
       title: 'Complaint Monitoring',
       description: 'Monitor and manage community complaints',
     },
-    table: { title: 'Waste Management', description: 'Oversight panel for GMC waste management' },
-    inspector: { title: 'Inspector', description: 'Submit waste collection records' },
-    role: { title: 'Role Assignment', description: 'Search and update user roles' },
-    charts: { title: 'Analytics', description: 'Oversight panel for GMC waste management' },
-    knowledge: { title: 'Knowledge Base', description: 'Manage chatbot Q&A pairs' },
+    table: {
+      title: 'Waste Management',
+      description: 'Oversight panel for GMC waste management',
+    },
+    inspector: {
+      title: 'Inspector Portal',
+      description: 'Submit waste collection records',
+    },
+    role: {
+      title: 'Role Assignment',
+      description: 'Search and update user roles',
+    },
+    charts: {
+      title: 'Analytics',
+      description: 'Oversight panel for GMC analytics',
+    },
+    knowledge: {
+      title: 'Knowledge Base',
+      description: 'Manage chatbot Q&A pairs',
+    },
   };
 
-  const { title: pageTitle } = pageMeta[activeView];
-  const pageDescription =
-    activeView === 'charts'
-      ? analyticsTab === 'complaint'
-        ? 'Oversight panel for GMC complaint monitor'
-        : 'Oversight panel for GMC waste management'
-      : pageMeta[activeView].description;
+  const { title: pageTitle, description: pageDescription } = pageMeta[activeView];
   const IconComponent = iconMap[activeView];
 
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100/80">
       <div className="pointer-events-none fixed inset-0">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-purple-200/20 blur-3xl" />
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
         <div className="absolute -right-32 -bottom-32 h-96 w-96 rounded-full bg-emerald-200/20 blur-3xl" />
-        <div className="absolute top-1/2 left-1/3 h-64 w-64 -translate-y-1/2 rounded-full bg-blue-200/10 blur-3xl" />
       </div>
+
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
@@ -78,74 +94,95 @@ export const AdminPage = () => {
         onMobileClose={() => setSidebarOpen(false)}
       />
 
-      <div className="flex flex-1 flex-col md:ml-60">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-white/20 bg-white/70 px-4 backdrop-blur-xl md:hidden">
+      <div className="flex flex-1 flex-col md:ml-64">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/50 bg-white/70 px-4 backdrop-blur-xl md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="hover:bg-accent rounded-lg p-1.5 transition-all"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary"
           >
             <Menu className="h-5 w-5" />
           </button>
-          {activeView !== 'complaint' && activeView !== 'inspector' && activeView !== 'role' && (
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-sm font-bold tracking-tight">{pageTitle}</h1>
-              <p className="text-muted-foreground/70 truncate text-xs">{pageDescription}</p>
-            </div>
-          )}
         </header>
 
         <main className="flex-1 overflow-auto">
-          <div className="mx-auto px-4 py-8 sm:px-6 lg:px-8" style={{ maxWidth: '1200px' }}>
-            {activeView !== 'complaint' && activeView !== 'inspector' && activeView !== 'role' && (
-              <div className="animate-in fade-in-0 slide-in-from-top-2 mb-8 hidden duration-500 [animation-delay:100ms] md:block">
+          <div className="mx-auto px-4 py-6 sm:px-6 lg:px-8" style={{ maxWidth: '1200px' }}>
+            <div className="hidden md:block">
+              <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-xl">
-                    <IconComponent className="text-primary h-6 w-6" />
+                  <div
+                    className={cn(
+                      'flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm',
+                      activeView === 'complaint' ? 'gradient-green' : 'bg-secondary',
+                    )}
+                  >
+                    <IconComponent
+                      className={cn(
+                        'h-6 w-6',
+                        activeView === 'complaint' ? 'text-white' : 'text-primary',
+                      )}
+                    />
                   </div>
                   <div>
-                    <div className="text-muted-foreground/40 mb-1 text-xs font-semibold tracking-widest uppercase">
-                      {activeView === 'charts' ? 'Overview' : 'Data'}
-                    </div>
-                    <h1 className="text-foreground text-2xl font-bold tracking-tight">
+                    <p className="text-[10px] font-bold tracking-widest text-muted-foreground/50 uppercase">
+                      {activeView === 'charts' ? 'Overview' : 'Management'}
+                    </p>
+                    <h1 className="text-2xl font-black tracking-tight text-foreground">
                       {pageTitle}
                     </h1>
-                    <p className="text-muted-foreground mt-0.5 text-sm">{pageDescription}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{pageDescription}</p>
                   </div>
                 </div>
               </div>
-            )}
+
+              {activeView === 'complaint' && (
+                <div className="mb-6 grid grid-cols-4 gap-3">
+                  {SUMMARY.map((s) => (
+                    <div
+                      key={s.label}
+                      className={cn(
+                        'flex flex-col gap-1 rounded-2xl border border-border/50 p-4 shadow-sm',
+                        s.bg,
+                      )}
+                    >
+                      <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                        {s.label}
+                      </span>
+                      <span className={cn('text-2xl font-black', s.color)}>{s.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {activeView === 'inspector' && (
-              <div className="animate-in fade-in-0 slide-in-from-top-2 duration-500 [animation-delay:200ms]">
+              <div className="animate-slide-up">
                 <WasteReportingForm />
               </div>
             )}
             {activeView === 'role' && <RoleAssignment />}
             {activeView === 'charts' && (
               <div className="space-y-6">
-                <div className="animate-in fade-in-0 slide-in-from-bottom-2 rounded-xl border border-white/20 bg-white/60 p-1.5 shadow-xs backdrop-blur-sm duration-500 [animation-delay:200ms]">
+                <div className="animate-slide-up rounded-2xl border border-border/50 bg-card/60 p-1.5 shadow-sm backdrop-blur-sm">
                   <div className="flex gap-1">
                     <button
-                      type="button"
                       onClick={() => setAnalyticsTab('waste')}
                       className={cn(
-                        'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all',
+                        'flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all',
                         analyticsTab === 'waste'
-                          ? 'bg-primary text-primary-foreground shadow-xs'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/60',
+                          ? 'gradient-green text-white shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60',
                       )}
                     >
                       <Recycle className="h-4 w-4" />
                       Waste Management
                     </button>
                     <button
-                      type="button"
                       onClick={() => setAnalyticsTab('complaint')}
                       className={cn(
-                        'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all',
+                        'flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all',
                         analyticsTab === 'complaint'
-                          ? 'bg-primary text-primary-foreground shadow-xs'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/60',
+                          ? 'gradient-green text-white shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60',
                       )}
                     >
                       <AlertTriangle className="h-4 w-4" />
@@ -153,17 +190,17 @@ export const AdminPage = () => {
                     </button>
                   </div>
                 </div>
-                <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500 [animation-delay:300ms]">
+                <div className="animate-slide-up stagger-1">
                   {analyticsTab === 'waste' ? <WasteCharts /> : <ComplaintCharts />}
                 </div>
               </div>
             )}
-            <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-500 [animation-delay:200ms]">
+            <div className="animate-slide-up">
               {activeView === 'table' && <WasteRecord />}
               {activeView === 'complaint' && <ComplaintMonitor />}
             </div>
             {activeView === 'knowledge' && (
-              <div className="animate-in fade-in-0 slide-in-from-top-2 duration-500 [animation-delay:200ms]">
+              <div className="animate-slide-up">
                 <KnowledgeBase />
               </div>
             )}

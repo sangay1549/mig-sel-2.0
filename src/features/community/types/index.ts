@@ -16,6 +16,12 @@ export interface ActivityItem {
   status?: FeedStatus;
   latitude?: number;
   longitude?: number;
+  isOfficial?: boolean;
+  isVerified?: boolean;
+  department?: string;
+  isPinned?: boolean;
+  isEmergency?: boolean;
+  postType?: string;
 }
 
 export interface FeedComment {

@@ -13,10 +13,12 @@ export const useUpdateUserRole = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: async (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['admin', 'search-user', variables.email],
       });
+      await supabase.auth.refreshSession();
+      queryClient.invalidateQueries({ queryKey: ['session'] });
     },
   });
 };

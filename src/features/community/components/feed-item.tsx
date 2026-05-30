@@ -9,6 +9,9 @@ import {
   MessageCircle,
   Send,
   Image,
+  BadgeCheck,
+  Pin,
+  AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useCurrentUser } from '@/features/auth/api/use-current-user';
@@ -132,16 +135,42 @@ export const FeedItem = ({ item }: FeedItemProps) => {
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between">
-            <div className="flex min-w-0 items-baseline gap-2">
-              <span className="truncate text-sm font-semibold text-gray-900">{item.userName}</span>
-              {item.status && (
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE[item.status].bg} ${STATUS_BADGE[item.status].text}`}
-                >
-                  {STATUS_BADGE[item.status].label}
-                </span>
-              )}
-              <span className="shrink-0 text-xs text-gray-400">{timeAgo(item.timestamp)}</span>
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-2">
+                <span className="truncate text-sm font-semibold text-gray-900">{item.userName}</span>
+                {item.isOfficial && (
+                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                )}
+                {item.status && (
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE[item.status].bg} ${STATUS_BADGE[item.status].text}`}
+                  >
+                    {STATUS_BADGE[item.status].label}
+                  </span>
+                )}
+                {item.isEmergency && (
+                  <span className="flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600">
+                    <AlertTriangle className="h-3 w-3" />
+                    Alert
+                  </span>
+                )}
+                {item.isPinned && (
+                  <Pin className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                )}
+              </div>
+              <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
+                {item.department && (
+                  <span className="font-medium text-gray-500">{item.department}</span>
+                )}
+                {item.department && <span>&middot;</span>}
+                <span>{timeAgo(item.timestamp)}</span>
+                {item.location && (
+                  <>
+                    <span>&middot;</span>
+                    <span>{item.location}</span>
+                  </>
+                )}
+              </div>
             </div>
             <div className="relative" ref={menuRef} onClick={(e) => e.stopPropagation()}>
               <button
@@ -546,4 +575,4 @@ export const FeedItem = ({ item }: FeedItemProps) => {
   );
 };
 
-const fullViewHeight = 440;
+const fullViewHeight = 320;

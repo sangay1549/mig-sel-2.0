@@ -8,11 +8,11 @@ import { useCreateGrievance } from '@/features/auth/grievance/components/use-cre
 import { useCurrentUser } from '@/features/auth/api/use-current-user';
 
 const CATEGORIES = [
-  { value: 'road', label: 'Road Damage' },
-  { value: 'garbage', label: 'Waste Management' },
-  { value: 'lighting', label: 'Street Lighting' },
-  { value: 'drainage', label: 'Drainage/Sewage' },
-  { value: 'other', label: 'Other' },
+  { value: 'road', label: 'Road Damage', icon: '🛣️' },
+  { value: 'garbage', label: 'Waste Management', icon: '🗑️' },
+  { value: 'lighting', label: 'Street Lighting', icon: '💡' },
+  { value: 'drainage', label: 'Drainage/Sewage', icon: '🌊' },
+  { value: 'other', label: 'Other', icon: '📌' },
 ] as const;
 
 export const ReportPage = () => {
@@ -33,12 +33,12 @@ export const ReportPage = () => {
     setMessage(null);
 
     if (!selectedFile) {
-      setMessage({ type: 'error', text: 'Please upload a photo to submit a report' });
+      setMessage({ type: 'error', text: 'Please take a photo to submit a report' });
       return;
     }
 
     if (!gpsCoords) {
-      setMessage({ type: 'error', text: 'Location not available. Please wait for GPS detection.' });
+      setMessage({ type: 'error', text: 'Location not available. Please wait for GPS.' });
       return;
     }
 
@@ -57,10 +57,9 @@ export const ReportPage = () => {
         reporter_id: user?.id ?? null,
       });
 
-      setMessage({ type: 'success', text: 'Report submitted to GMC successfully!' });
+      setMessage({ type: 'success', text: 'Report submitted successfully!' });
       setTimeout(() => navigate('/map'), 1500);
     } catch (error) {
-      console.error('Submission failed. Category:', category, 'Error:', error);
       if (error && typeof error === 'object' && 'message' in error) {
         setMessage({ type: 'error', text: String((error as { message: string }).message) });
       } else {
@@ -75,7 +74,7 @@ export const ReportPage = () => {
     const files = e.target.files;
     if (!files?.[0]) return;
     if (files[0].size > 10 * 1024 * 1024) {
-      setMessage({ type: 'error', text: 'File is too large. Maximum size is 10MB.' });
+      setMessage({ type: 'error', text: 'File too large. Maximum 10MB.' });
       e.target.value = '';
       return;
     }
@@ -84,28 +83,25 @@ export const ReportPage = () => {
   };
 
   return (
-    <div className="bg-background flex h-dvh flex-col overflow-hidden font-sans">
-      <header className="border-border flex h-14 shrink-0 items-center gap-3 border-b px-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+    <div className="flex min-h-dvh flex-col">
+      <div className="flex h-14 items-center gap-3 border-b border-border/50 px-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-secondary"
+        >
           <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="text-lg font-bold">New Report</h1>
-      </header>
+        </button>
+        <h1 className="text-lg font-bold text-foreground">New Report</h1>
+      </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-lg p-4 md:p-6">
-          <form
-            className="space-y-6"
-            onSubmit={(e) => {
-              e.preventDefault();
-              submitReport();
-            }}
-          >
-            <div className="bg-surface-container border-outline-variant flex items-center gap-3 rounded-lg border p-3">
-              <MapPin className="text-primary h-5 w-5 shrink-0" />
-              <div className="text-body-sm">
-                <p className="font-bold">Your Location</p>
-                <p className="text-muted-foreground">
+        <div className="mx-auto w-full max-w-lg md:max-w-2xl lg:max-w-3xl space-y-5 p-4">
+          <div className="animate-slide-up rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <MapPin className="h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <p className="text-sm font-bold text-foreground">Your Location</p>
+                <p className="text-xs text-muted-foreground">
                   {geoError
                     ? geoError
                     : gpsCoords
@@ -116,98 +112,133 @@ export const ReportPage = () => {
                 </p>
               </div>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-label-sm text-muted-foreground font-bold uppercase">
-                Title <span className="text-muted-foreground/50">(optional)</span>
-              </label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="border-outline bg-background focus:ring-primary w-full rounded-lg border p-3 outline-none focus:ring-2"
-                placeholder="Brief title for the report"
-              />
+          <div className="animate-slide-up stagger-1 space-y-2">
+            <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              Category
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => setCategory(cat.value)}
+                  className={`flex flex-col items-center gap-1 rounded-xl border p-3 transition-all ${
+                    category === cat.value
+                      ? 'border-primary bg-primary/5 text-primary shadow-sm'
+                      : 'border-border/50 text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                  }`}
+                >
+                  <span className="text-lg">{cat.icon}</span>
+                  <span className="text-[10px] font-semibold leading-tight text-center">
+                    {cat.label.split('/')[0]}
+                  </span>
+                </button>
+              ))}
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-label-sm text-muted-foreground font-bold uppercase">
-                Category <span className="text-muted-foreground/50">(optional)</span>
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="border-outline bg-background focus:ring-primary w-full rounded-lg border p-3 outline-none focus:ring-2"
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-label-sm text-muted-foreground font-bold uppercase">
-                Description <span className="text-muted-foreground/50">(optional)</span>
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="border-outline focus:ring-primary h-24 w-full rounded-lg border p-3 outline-none focus:ring-2"
-                placeholder="Describe the issue (optional)"
-              />
-            </div>
-
+          <div className="animate-slide-up stagger-2 space-y-2">
+            <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              Title
+            </label>
             <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileSelect}
-              className="hidden"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-xl border border-border/50 bg-card px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
+              placeholder="Brief title for the report"
             />
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-label-sm text-muted-foreground font-bold uppercase">
-                Photo <span className="text-destructive">*</span>
-              </label>
-              <div
+          <div className="animate-slide-up stagger-3 space-y-2">
+            <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              Description
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="h-24 w-full rounded-xl border border-border/50 bg-card px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/20"
+              placeholder="Describe the issue"
+            />
+          </div>
+
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          <div className="animate-slide-up stagger-4 space-y-2">
+            <label className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
+              Photo <span className="text-destructive">*</span>
+            </label>
+            {selectedFile ? (
+              <div className="relative overflow-hidden rounded-2xl border border-border/50">
+                <img
+                  src={URL.createObjectURL(selectedFile)}
+                  alt="Preview"
+                  className="h-64 w-full object-cover"
+                />
+                <button
+                  onClick={() => setSelectedFile(null)}
+                  className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <button
                 onClick={() => cameraInputRef.current?.click()}
-                className="border-primary hover:bg-primary/5 flex cursor-pointer flex-col items-center justify-center space-y-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors"
+                className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 p-8 text-center transition-all hover:bg-primary/10 hover:border-primary/50"
               >
-                <Camera className="text-primary h-7 w-7" />
-                <p className="text-label-sm text-primary font-semibold">
-                  {selectedFile ? selectedFile.name : 'Take a photo'}
-                </p>
-                <p className="text-body-xs text-muted-foreground">Use your device camera</p>
-              </div>
-            </div>
-
-            {message && (
-              <div
-                className={`flex items-center gap-2 rounded-lg p-3 text-sm font-medium ${
-                  message.type === 'success'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                }`}
-              >
-                {message.type === 'success' ? (
-                  <CheckCircle className="h-4 w-4 shrink-0" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                )}
-                {message.text}
-              </div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                  <Camera className="h-7 w-7 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-primary">Take a photo</p>
+                  <p className="text-xs text-muted-foreground">Use your device camera</p>
+                </div>
+              </button>
             )}
+          </div>
 
-            <Button
-              disabled={isUploading || !selectedFile}
-              type="submit"
-              className="bg-primary text-primary-foreground h-12 w-full rounded-lg font-bold shadow-lg"
+          {message && (
+            <div
+              className={`flex items-center gap-2 rounded-xl p-3 text-sm font-medium ${
+                message.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'bg-red-50 text-red-700'
+              }`}
             >
-              {isUploading ? 'Submitting...' : 'Submit Report'}
-            </Button>
-          </form>
+              {message.type === 'success' ? (
+                <CheckCircle className="h-4 w-4 shrink-0" />
+              ) : (
+                <AlertCircle className="h-4 w-4 shrink-0" />
+              )}
+              {message.text}
+            </div>
+          )}
+
+          <Button
+            disabled={isUploading || !selectedFile}
+            onClick={submitReport}
+            className="gradient-green h-12 w-full rounded-xl font-bold text-white shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
+          >
+            {isUploading ? (
+              <span className="flex items-center gap-2">
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Submitting...
+              </span>
+            ) : (
+              'Submit Report'
+            )}
+          </Button>
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { useUpdateUserRole } from '@/features/admin/api/use-update-user-role';
 import { Input } from '@/components/ui/input';
 
 const ROLE_OPTIONS = [
-  { value: 'user', label: 'User' },
+  { value: 'official', label: 'Official' },
   { value: 'inspector', label: 'Inspector' },
   { value: 'admin', label: 'Admin' },
 ];
@@ -21,7 +21,7 @@ const extractErrorMessage = (err: unknown): string => {
 export const RoleAssignment = () => {
   const [searchInput, setSearchInput] = useState('');
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
-  const [selectedRole, setSelectedRole] = useState('user');
+  const [selectedRole, setSelectedRole] = useState('official');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
