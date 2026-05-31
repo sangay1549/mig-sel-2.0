@@ -54,7 +54,6 @@ export const FeedItem = ({ item }: FeedItemProps) => {
   const navigate = useNavigate();
   const { mutate: deleteFeedItem } = useDeleteFeedItem();
   const { mutate, isPending } = useToggleUpvote();
-  const clickLock = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -101,22 +100,8 @@ export const FeedItem = ({ item }: FeedItemProps) => {
 
   const handleUpvote = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('[handleUpvote] click', {
-      feedId: item.id,
-      isUpvoted: item.isUpvoted,
-      clickLock: clickLock.current,
-      isPending,
-    });
-    if (!user || clickLock.current) return;
-    clickLock.current = true;
-    mutate(
-      { feedId: item.id, isCurrentlyUpvoted: item.isUpvoted },
-      {
-        onSettled: () => {
-          clickLock.current = false;
-        },
-      },
-    );
+    if (!user || isPending) return;
+    mutate({ feedId: item.id });
   };
 
   const cardContent = (fullView: boolean) => (
@@ -137,10 +122,10 @@ export const FeedItem = ({ item }: FeedItemProps) => {
           <div className="flex items-center justify-between">
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
-                <span className="truncate text-sm font-semibold text-gray-900">{item.userName}</span>
-                {item.isOfficial && (
-                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-                )}
+                <span className="truncate text-sm font-semibold text-gray-900">
+                  {item.userName}
+                </span>
+                {item.isOfficial && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-blue-500" />}
                 {item.status && (
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE[item.status].bg} ${STATUS_BADGE[item.status].text}`}
@@ -154,9 +139,7 @@ export const FeedItem = ({ item }: FeedItemProps) => {
                     Alert
                   </span>
                 )}
-                {item.isPinned && (
-                  <Pin className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                )}
+                {item.isPinned && <Pin className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
               </div>
               <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
                 {item.department && (
@@ -504,8 +487,8 @@ export const FeedItem = ({ item }: FeedItemProps) => {
                 )}
               </div>
 
-              {/* Comment input – admin only */}
-              {user && isAdmin ? (
+              {/* Comment input */}
+              {user ? (
                 <form
                   onSubmit={handleIvSubmit}
                   className="flex flex-col gap-2 border-t border-gray-100 py-2"
@@ -562,10 +545,6 @@ export const FeedItem = ({ item }: FeedItemProps) => {
                     </Button>
                   </div>
                 </form>
-              ) : user ? (
-                <p className="border-t border-gray-100 py-2 text-center text-[11px] text-gray-400">
-                  Only admins can comment.
-                </p>
               ) : null}
             </div>
           </div>

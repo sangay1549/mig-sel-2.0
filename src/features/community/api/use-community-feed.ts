@@ -16,12 +16,23 @@ export type FeedCategory = 'all' | 'issues' | 'updates' | 'official' | 'life_upd
 
 export const communityKeys = {
   all: ['community'] as const,
-  feed: (userId?: string, page?: number, pageSize?: number, category?: FeedCategory) =>
-    [...communityKeys.all, 'feed', userId, page, pageSize, category] as const,
+  feed: (userId?: string, page?: number, pageSize?: number, category?: FeedCategory) => {
+    const key: unknown[] = [...communityKeys.all, 'feed'];
+    if (userId) key.push(userId);
+    if (page !== undefined && pageSize !== undefined) {
+      key.push(page, pageSize);
+    }
+    if (category && category !== 'all') key.push(category);
+    return key;
+  },
   goal: () => [...communityKeys.all, 'goal'] as const,
 };
 
-export const useCommunityFeed = (page: number = 1, pageSize: number = 5, category: FeedCategory = 'all') => {
+export const useCommunityFeed = (
+  page: number = 1,
+  pageSize: number = 5,
+  category: FeedCategory = 'all',
+) => {
   const { user } = useCurrentUser();
 
   return useQuery({
@@ -38,7 +49,7 @@ export const useCommunityFeed = (page: number = 1, pageSize: number = 5, categor
           'id, user_name, user_initials, action_text, location, image_url, created_at, upvote_count, comment_count, user_id, status, is_official, official_department, is_pinned, is_emergency, announcement_category' +
           (withPostType ? ', post_type' : '');
 
-        let q: any = supabase.from('community_feed').select(cols, { count: 'exact', head: false });
+        let q = supabase.from('community_feed').select(cols, { count: 'exact', head: false });
 
         if (category === 'official') {
           q = q.eq('is_official', true);

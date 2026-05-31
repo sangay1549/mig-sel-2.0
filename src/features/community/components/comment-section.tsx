@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Send, X, MoreHorizontal, Trash2, Edit3, Image } from 'lucide-react';
 import { useFeedComments, useCreateComment } from '../api/use-feed-comments';
 import { useEditComment } from '../api/use-edit-comment';
 import { useDeleteComment } from '../api/use-delete-comment';
 import { useCurrentUser } from '@/features/auth/api/use-current-user';
-import { useIsAdmin } from '@/features/auth/api/use-is-admin';
 import {
   DialogRoot,
   DialogTrigger,
@@ -21,9 +20,8 @@ interface CommentSectionProps {
   item: ActivityItem;
 }
 
-export const CommentSection = ({ item }: CommentSectionProps) => {
+export const CommentSection = React.memo(({ item }: CommentSectionProps) => {
   const { user } = useCurrentUser();
-  const { data: isAdmin } = useIsAdmin();
   const { data: comments, isLoading } = useFeedComments(item.id);
   const { mutate: createComment, isPending } = useCreateComment();
   const [newComment, setNewComment] = useState('');
@@ -87,7 +85,6 @@ export const CommentSection = ({ item }: CommentSectionProps) => {
                   key={comment.id}
                   comment={comment}
                   feedId={item.id}
-                  isAdmin={!!isAdmin}
                   isOwner={isCommentOwner}
                 />
               );
@@ -95,7 +92,7 @@ export const CommentSection = ({ item }: CommentSectionProps) => {
           )}
         </div>
 
-        {user && isAdmin ? (
+        {user ? (
           <form
             onSubmit={handleSubmit}
             className="flex flex-col gap-2 border-t border-gray-100 pt-3"
@@ -148,10 +145,6 @@ export const CommentSection = ({ item }: CommentSectionProps) => {
               </Button>
             </div>
           </form>
-        ) : user ? (
-          <p className="border-t border-gray-100 pt-3 text-center text-xs text-gray-400">
-            Only admins can comment.
-          </p>
         ) : (
           <p className="border-t border-gray-100 pt-3 text-center text-xs text-gray-400">
             Sign in to add a comment.
@@ -160,12 +153,11 @@ export const CommentSection = ({ item }: CommentSectionProps) => {
       </DialogContent>
     </DialogRoot>
   );
-};
+});
 
 function CommentRow({
   comment,
   feedId,
-  isAdmin,
   isOwner,
 }: {
   comment: {
@@ -179,7 +171,6 @@ function CommentRow({
     image_url?: string;
   };
   feedId: number;
-  isAdmin: boolean;
   isOwner: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -274,7 +265,7 @@ function CommentRow({
               })}
             </span>
             {wasEdited && <span className="text-[11px] text-gray-400 italic">Edited</span>}
-            {isAdmin && isOwner && (
+            {isOwner && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -288,7 +279,7 @@ function CommentRow({
               </button>
             )}
           </div>
-          {isAdmin && isOwner && (
+          {isOwner && (
             <div className="relative" ref={menuRef}>
               <button
                 onClick={(e) => {
