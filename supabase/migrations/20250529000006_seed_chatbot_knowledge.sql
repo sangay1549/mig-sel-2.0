@@ -3,8 +3,8 @@
 insert into public.chatbot_knowledge (question, answer, keywords) values
 
 ('What is mig-sel?',
- 'mig-sel is a civic engagement platform for the Gelephu Mindfulness City (GMC) in Bhutan. It lets residents report issues (grievances), track their resolution, earn points, and engage with the community through a feed, leaderboard, and rewards shop.',
- array['app', 'about', 'what is', 'platform', 'civic', 'engage']),
+ 'mig-sel is a community connection platform for the Gelephu Mindfulness City (GMC) in Bhutan. It helps GMC residents stay connected — share updates, report civic issues, earn points, and engage with the community through a feed, leaderboard, and rewards shop.',
+ array['app', 'about', 'what is', 'platform', 'community', 'engage', 'gmc family']),
 
 ('How do I get started?',
  'Create an account using your email or phone number. Once logged in, you can explore the Map to see reports near you, submit new reports via the Camera button, browse the Community feed, and earn points for contributing.',
@@ -190,6 +190,18 @@ insert into public.chatbot_knowledge (question, answer, keywords) values
   'When you submit a grievance report, it is now automatically added to the Community feed. Your username and initials from your profile are displayed alongside the report title. The feed shows all content (grievances + official announcements) sorted by newest first.',
   array['feed grievance showing', 'how feed works', 'feed content', 'report in feed', 'community feed grievance']),
 
-('Can I delete a feed item?',
-  'You can delete your own feed items. The delete action now correctly removes the entry from the community_feed table. Only the feed entry author can delete their own posts due to Row-Level Security policies.',
-  array['delete feed', 'remove feed item', 'delete post', 'remove post']);
+ ('Can I delete a feed item?',
+   'You can delete your own feed items. The delete action now correctly removes the entry from the community_feed table. Only the feed entry author can delete their own posts due to Row-Level Security policies.',
+   array['delete feed', 'remove feed item', 'delete post', 'remove post']),
+
+('What is on the login page?',
+   'The login page features the GMC logo, "GMC Family" branding with the tagline "Keeping us connected", and a "Continue with Google" button on a clean black background.',
+   array['login', 'login page', 'sign in page', 'landing page', 'gmc family login', 'black background']),
+
+('Why does the login page have a black background?',
+   'The login page uses a solid black background with a subtle gradient overlay to give the app a clean, modern look that puts the focus on the GMC logo and the sign-in button.',
+   array['black background', 'dark theme', 'login design', 'login style', 'dark mode']),
+
+('What happened to the migration theme?',
+   'The app was rebranded from "mig-sel" (Migration Assistant) to "GMC Family" to better reflect its purpose — connecting GMC residents as a small family rather than an immigration tool.',
+   array['rebrand', 'migration removed', 'mig-sel removed', 'new branding', 'gmc family rebrand']);

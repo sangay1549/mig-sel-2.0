@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { useSignInWithGoogle } from '@/features/auth/api/use-sign-in-with-google';
 import { useSession } from '@/features/auth/api/use-session';
-import { Shield, MapPin, Zap } from 'lucide-react';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -20,53 +19,28 @@ export const LoginPage = () => {
   }, [session, isLoading, navigate]);
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden">
-      <div className="gradient-green absolute inset-0" />
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-gray-950">
       <div
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 25% 25%, white 1px, transparent 1px), radial-gradient(circle at 75% 75%, white 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
+        className="absolute inset-0 bg-cover bg-center opacity-60"
+        style={{ backgroundImage: 'url(/GMC.png)' }}
       />
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/15 shadow-lg backdrop-blur-sm">
-            <span className="text-3xl font-black text-white">G</span>
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 shadow-lg backdrop-blur-sm">
+            <span className="text-3xl font-black text-white">m</span>
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white">
-            GMC Civic
-            <br />
-            Connect
-          </h1>
-          <p className="mt-2 text-sm font-medium text-white/70">
-            Gelephu Mindfulness City
+          <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-lg">migsel</h1>
+          <p className="mt-2 text-sm font-medium text-white/80 drop-shadow-md">
+            keeping us connected
           </p>
-        </div>
-
-        <div className="mb-10 grid w-full max-w-xs grid-cols-3 gap-3">
-          {[
-            { icon: MapPin, label: 'Report Issues' },
-            { icon: Zap, label: 'Track Status' },
-            { icon: Shield, label: 'Community' },
-          ].map(({ icon: Icon, label }) => (
-            <div
-              key={label}
-              className="flex flex-col items-center gap-2 rounded-xl bg-white/10 p-3 backdrop-blur-sm"
-            >
-              <Icon className="h-5 w-5 text-white" />
-              <span className="text-[10px] font-semibold text-white/80">{label}</span>
-            </div>
-          ))}
         </div>
 
         <div className="w-full max-w-sm space-y-3">
           <Button
             onClick={() => signInWithGoogle.mutate()}
             disabled={signInWithGoogle.isPending}
-            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-white text-sm font-bold text-emerald-900 shadow-lg transition-all hover:bg-white/90 hover:shadow-xl active:scale-[0.98]"
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-white text-sm font-bold text-black shadow-lg transition-all hover:bg-white/90 hover:shadow-xl active:scale-[0.98]"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path
@@ -88,10 +62,6 @@ export const LoginPage = () => {
             </svg>
             {signInWithGoogle.isPending ? 'Signing in...' : 'Continue with Google'}
           </Button>
-
-          <p className="text-center text-xs text-white/50">
-            Secure civic platform for Gelephu residents
-          </p>
         </div>
       </div>
     </div>
